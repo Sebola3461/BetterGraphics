@@ -3,7 +3,7 @@ using MelonLoader;
 using PBSLoaderCommonUtils;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(BetterGraphics.BetterGraphicsMod), "BetterGraphics", "1.1.0", "nzrn")]
+[assembly: MelonInfo(typeof(BetterGraphics.BetterGraphicsMod), "BetterGraphics", "1.1.1", "nzrn")]
 [assembly: MelonGame(null, "Proton Bus Simulator")]
 
 namespace BetterGraphics
@@ -225,9 +225,9 @@ namespace BetterGraphics
             AutoExposicao = c.CreateEntry("AutoExposicao", true, "Adaptação do olho (túnel, abrigo, cabine)");
             Tonemapper = c.CreateEntry("Tonemapper", "Custom", "ACES (filme, puxa azuis para o roxo) ou Neutral (sem desvio de cor)");
             CurvaPe = c.CreateEntry("CurvaPe", 0.6f, "Tonemapper Custom: força do pé (sombras firmes)");
-            CurvaOmbro = c.CreateEntry("CurvaOmbro", 1.5f, "Tonemapper Custom: força do ombro (até onde os claros vão antes de comprimir)");
+            CurvaOmbro = c.CreateEntry("CurvaOmbro", 1.8f, "Tonemapper Custom: força do ombro (até onde os claros vão antes de comprimir)");
             CurvaPeAlcance = c.CreateEntry("CurvaPeAlcance", 0.5f, "Tonemapper Custom: até onde vai o pé (0 a 1)");
-            CurvaOmbroAlcance = c.CreateEntry("CurvaOmbroAlcance", 1.5f, "Tonemapper Custom: margem dos claros em EV antes de saturar (curto = branco estoura)");
+            CurvaOmbroAlcance = c.CreateEntry("CurvaOmbroAlcance", 2.2f, "Tonemapper Custom: margem dos claros em EV antes de saturar (curto = branco estoura)");
             CurvaOmbroAngulo = c.CreateEntry("CurvaOmbroAngulo", 0f, "Tonemapper Custom: inclinação final do ombro (0 a 1)");
             Exposicao = c.CreateEntry("Exposicao", -1f, "Compensação de exposição (EV)");
             ExposicaoMin = c.CreateEntry("ExposicaoMin", -2.5f, "Luminância média mínima considerada (EV100): abaixo disso a cena fica escura de verdade (noite)");
@@ -239,8 +239,8 @@ namespace BetterGraphics
             Contraste = c.CreateEntry("Contraste", 0f, "-100 a 100");
             Saturacao = c.CreateEntry("Saturacao", -22f, "-100 a 100");
             Temperatura = c.CreateEntry("Temperatura", 0f, "-100 frio a 100 quente");
-            Bloom = c.CreateEntry("Bloom", 0.3f, "Intensidade do bloom");
-            BloomLimiar = c.CreateEntry("BloomLimiar", 1.5f, "Brilho a partir do qual há bloom");
+            Bloom = c.CreateEntry("Bloom", 0.22f, "Intensidade do bloom");
+            BloomLimiar = c.CreateEntry("BloomLimiar", 1.8f, "Brilho a partir do qual há bloom");
             AO = c.CreateEntry("OclusaoAmbiente", true, "Oclusão de ambiente");
             AOIntensidade = c.CreateEntry("OclusaoIntensidade", 0.8f, "Intensidade da oclusão");
             SSR = c.CreateEntry("ReflexosTela", true, "Reflexos em tela (chão molhado, superfícies lisas)");
@@ -252,10 +252,10 @@ namespace BetterGraphics
             SondaResolucao = c.CreateEntry("SondaResolucao", 256, "128, 256 ou 512");
             SondaIntervalo = c.CreateEntry("SondaIntervalo", 0.2f, "Segundos entre atualizações da sonda");
             ReflexoPintura = c.CreateEntry("ReflexoPintura", true, "Liga reflexos nas pinturas dos veículos (vêm desligados)");
-            BrilhoMax = c.CreateEntry("PinturaBrilhoMax", 0.6f, "Limite de smoothness das pinturas (1 = cromado)");
+            BrilhoMax = c.CreateEntry("PinturaBrilhoMax", 0.75f, "Limite de smoothness das pinturas (1 = cromado; abaixo de ~0.6 a tinta fica fosca, com cara de papel)");
 
             LatariaBrilho = c.CreateEntry("LatariaBrilho", 0.9f, "Smoothness da lataria dos veículos (objetos _ref; o jogo usa 0.6, fosco). 0 = original");
-            LatariaVerniz = c.CreateEntry("LatariaVerniz", 0.15f, "Reflexo extra da lataria imitando o verniz (metallic; 0 = tinta pura, acima de 0.3 parece cromado)");
+            LatariaVerniz = c.CreateEntry("LatariaVerniz", 0.25f, "Reflexo extra da lataria imitando o verniz (metallic; 0 = tinta pura, acima de 0.3 parece cromado)");
             VidrosAtivo = c.CreateEntry("Vidros", true, "Reflexo e fumê nos vidros dos veículos");
             VidroSemSombra = c.CreateEntry("VidroSemSombra", true, "Vidros não bloqueiam o sol (o salão do ônibus fica iluminado como de verdade)");
             VidroReflexo = c.CreateEntry("VidroReflexo", 0.55f, "Reflexo visto de longe");

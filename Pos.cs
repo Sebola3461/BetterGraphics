@@ -178,7 +178,7 @@ namespace BetterGraphics
             Set(_bloom.intensity, Cfg.Bloom.Value);
             Set(_bloom.threshold, Cfg.BloomLimiar.Value);
             Set(_bloom.softKnee, 0.5f);
-            Set(_bloom.diffusion, 7f);
+            Set(_bloom.diffusion, 5f);
 
             // Profundidade de campo (o foco em si é atualizado a cada quadro em Quadro).
             _dof.active = Cfg.Dof.Value;
@@ -190,23 +190,32 @@ namespace BetterGraphics
         // ---- foco da profundidade de campo (todo quadro) ----
 
         static float _foco = 10f, _alvoFoco = 10f, _proximoRaio;
+        static bool _dofLigado;
 
-        // Foco no que está no meio da tela, como o olho/câmera: raio de vez em quando, alvo suavizado a
-        // cada quadro (troca de foco em ~0,3 s). De dentro do ônibus o foco não vem mais perto que 6 m:
-        // o painel e o volante ficam levemente fora de foco, como numa foto real tirada de dentro.
+        // Foco automático no que está no meio da tela (raio de vez em quando, alvo suavizado a cada
+        // quadro: troca de foco em ~0,3 s, como o olho). De dentro do ônibus o DoF fica DESLIGADO: painel
+        // e volante sempre nítidos; o desfoque de lente é para as fotos de fora.
         internal static void Quadro()
         {
-            if (_dof == null || !Cfg.Dof.Value) return;
-            var cam = _cam;
-            if (cam == null) return;
+            if (_dof == null) return;
+            bool dentro = _cam != null && Veiculo.Dentro(_cam.transform.position);
+            bool on = Cfg.Dof.Value && !dentro;
+            if (on != _dofLigado)
+            {
+                _dofLigado = on;
+                _dof.active = on;
+                _dof.enabled.overrideState = true;
+                Escrever<byte>(_dof.enabled, (byte)(on ? 1 : 0));
+                if (on) _proximoRaio = 0f;
+            }
+            if (!on || _cam == null) return;
             if (Time.unscaledTime >= _proximoRaio)
             {
                 _proximoRaio = Time.unscaledTime + 0.12f;
                 float d = 60f;
-                if (Physics.Raycast(new Ray(cam.transform.position, cam.transform.forward), out var hit, 300f, ~0, QueryTriggerInteraction.Ignore))
+                if (Physics.Raycast(new Ray(_cam.transform.position, _cam.transform.forward), out var hit, 300f, ~0, QueryTriggerInteraction.Ignore))
                     d = hit.distance;
-                bool dentro = Veiculo.Dentro(cam.transform.position);
-                _alvoFoco = dentro ? Mathf.Clamp(d, 6f, 120f) : Mathf.Clamp(d, 1.2f, 200f);
+                _alvoFoco = Mathf.Clamp(d, 1.2f, 200f);
             }
             _foco = Mathf.Lerp(_foco, _alvoFoco, 1f - Mathf.Exp(-Time.deltaTime * 3f));
             Set(_dof.focusDistance, _foco);

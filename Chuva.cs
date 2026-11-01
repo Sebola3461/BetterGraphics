@@ -31,6 +31,8 @@ namespace BetterGraphics
         internal static void CenaMudou()
         {
             _rodas.Clear(); _busRodas = null; _rb = null; _matsProntos = false;
+            foreach (var r in _nat) try { if (r != null && !r.WasCollected) r.enabled = true; } catch { }
+            _nat.Clear(); _natOcultos = false; _proxNat = 0f;
             _sarjetas.Clear(); _centroVarredura = new Vector3(1e9f, 0, 0); _varrendo = false;
             if (_go != null) UnityEngine.Object.Destroy(_go);
             _fluxos.Clear(); _sarjetasPostas = -1; _go = null; _nevoa = _gotas = _lamina = _correnteza = _pingos = null; Array.Clear(_perto, 0, 4); Array.Clear(_longe, 0, 4); _alturaPronta = null; _modNevoa = null;
@@ -55,6 +57,12 @@ namespace BetterGraphics
 
         internal static void Quadro()
         {
+            // A chuva nativa (RainMaker/Enviro) segue a câmera sem colidir com o teto: com a câmera
+            // dentro, as gotas atravessam o telhado e chovem no salão. Os renderers dos sistemas
+            // nativos de chuva ficam escondidos enquanto a câmera estiver dentro; pelas janelas
+            // aparece a chuva densa do mod, que já tem o buraco no tamanho da carroceria.
+            var cam0 = Pos.Cam;
+            NativaChuva(cam0 != null && Veiculo.Dentro(cam0.transform.position));
             _orcamento = Cfg.ChuvaEmissoesQuadro.Value;
             if (!Cfg.ChuvaEfeitos.Value) { if (_go != null) CenaMudou(); return; }
             float chuva = Intensidade();
@@ -194,6 +202,33 @@ namespace BetterGraphics
             _lamina = Limpo("BetterGraphics_LaminaPoca", _matFio, 1f, 3000);
         }
 
+
+        // ---------------- chuva nativa (não chove dentro do ônibus)
+
+        static readonly List<ParticleSystemRenderer> _nat = new();
+        static float _proxNat;
+        static bool _natOcultos;
+
+        static void NativaChuva(bool dentro)
+        {
+            if (Time.unscaledTime >= _proxNat)
+            {
+                _proxNat = Time.unscaledTime + 5f;
+                foreach (var r in UnityEngine.Object.FindObjectsOfType<ParticleSystemRenderer>())
+                {
+                    if (r == null || r.name.StartsWith("BetterGraphics_", StringComparison.Ordinal) || _nat.Contains(r)) continue;
+                    var m = r.sharedMaterial;
+                    if (r.name.IndexOf("Rain", StringComparison.OrdinalIgnoreCase) >= 0
+                        || (m != null && m.name.IndexOf("Rain", StringComparison.OrdinalIgnoreCase) >= 0))
+                        _nat.Add(r);
+                }
+            }
+            if (dentro == _natOcultos) return;
+            _natOcultos = dentro;
+            foreach (var r in _nat)
+                try { if (r != null && !r.WasCollected) r.enabled = !dentro; } catch { }
+            if (dentro) Log.Msg("Chuva nativa escondida (câmera dentro do ônibus)");
+        }
 
         // ---------------- pneus
 
@@ -663,6 +698,7 @@ namespace BetterGraphics
                 if (i < 0 || j < 0 || i >= G || j >= G) continue;
                 float h = _alturaPronta[i, j];
                 if (h < -1e8f) continue;
+                if (Veiculo.Dentro(new Vector3(x, h + 0.5f, z))) continue;   // embaixo da carroceria não tem respingo
                 if (!Gastar()) break;
                 var ep = new ParticleSystem.EmitParams
                 {
