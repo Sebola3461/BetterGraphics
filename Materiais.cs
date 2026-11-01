@@ -1,0 +1,123 @@
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace BetterGraphics
+{
+    // Materiais do mapa. O carregador de mapas do jogo cria cada material como cópia de um modelo
+    // "basicwhite" (Standard) com metallic 0.6 e _METALLICGLOSSMAP ligado: quase todo o mapa (paredes,
+    // calçadas, prédios) vira semimetal, sem cor difusa própria e refletindo o céu. Por isso o visual
+    // "plástico" e acinzentado. Modo "fosco": dielétrico (metallic 0) com smoothness baixa, como
+    // concreto, reboco, asfalto e pintura de parede.
+    internal static class Materiais
+    {
+        sealed class Orig { public Material m; public bool kwMetal, kwSpec; public float metal, gloss, escala; }
+        static readonly Dictionary<IntPtr, Orig> _orig = new();
+        static string _modoAplicado = "";
+        static float _brilhoAplicado = -1f, _proxima;
+
+        internal static void CenaMudou() { _proxima = 0f; }
+
+        internal static void Manter()
+        {
+            string modo = Cfg.MapaMateriais.Value;
+            if (modo != _modoAplicado || !Mathf.Approximately(_brilhoAplicado, Cfg.MapaBrilho.Value))
+            {
+                Restaurar();
+                _modoAplicado = modo; _brilhoAplicado = Cfg.MapaBrilho.Value; _proxima = 0f;
+            }
+            if (modo == "original" || Time.unscaledTime < _proxima) return;
+            _proxima = Time.unscaledTime + 15f; // mapas carregam em blocos; pega os novos
+            int novos = 0;
+            foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>())
+                foreach (var m in r.sharedMaterials)
+                {
+                    if (m == null || m.shader == null || _orig.ContainsKey(m.Pointer)) continue;
+                    if (m.shader.name != "Standard" || !m.name.StartsWith("basicwhite", StringComparison.Ordinal)) continue;
+                    var o = new Orig
+                    {
+                        m = m, kwMetal = m.IsKeywordEnabled("_METALLICGLOSSMAP"), kwSpec = m.IsKeywordEnabled("_SPECGLOSSMAP"),
+                        metal = m.GetFloat("_Metallic"), gloss = m.GetFloat("_Glossiness"), escala = m.GetFloat("_GlossMapScale"),
+                    };
+                    _orig[m.Pointer] = o;
+                    Aplicar(m, modo);
+                    novos++;
+                }
+            if (novos > 0) Log.Msg($"Materiais do mapa ({modo}): {novos} novos, {_orig.Count} no total");
+        }
+
+        static void Aplicar(Material m, string modo)
+        {
+            if (modo == "fosco")
+            {
+                m.DisableKeyword("_METALLICGLOSSMAP");
+                m.DisableKeyword("_SPECGLOSSMAP");
+                m.SetFloat("_Metallic", 0f);
+                m.SetFloat("_Glossiness", Cfg.MapaBrilho.Value);
+            }
+            else if (modo == "semmetal") // mantém a smoothness do mapa de textura, só zera o metal
+            {
+                m.SetFloat("_Metallic", 0f);
+                m.SetFloat("_GlossMapScale", Mathf.Min(m.GetFloat("_GlossMapScale"), Cfg.MapaBrilho.Value));
+            }
+        }
+
+        internal static void Restaurar()
+        {
+            foreach (var o in _orig.Values)
+            {
+                try
+                {
+                    if (o.m == null) continue;
+                    if (o.kwMetal) o.m.EnableKeyword("_METALLICGLOSSMAP");
+                    if (o.kwSpec) o.m.EnableKeyword("_SPECGLOSSMAP");
+                    o.m.SetFloat("_Metallic", o.metal); o.m.SetFloat("_Glossiness", o.gloss); o.m.SetFloat("_GlossMapScale", o.escala);
+                }
+                catch { }
+            }
+            _orig.Clear();
+            _modoAplicado = "";
+        }
+
+        // Para o Lab: todas as propriedades de até n materiais cujo nome contém o texto.
+        internal static string Inspecionar(string texto, int n)
+        {
+            var sb = new System.Text.StringBuilder();
+            var vistos = new HashSet<IntPtr>();
+            foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>())
+                foreach (var m in r.sharedMaterials)
+                {
+                    if (m == null || !m.name.Contains(texto, StringComparison.OrdinalIgnoreCase) || !vistos.Add(m.Pointer)) continue;
+                    sb.Append(Descrever(m, r));
+                    if (vistos.Count >= n) return sb.ToString();
+                }
+            return sb.Length > 0 ? sb.ToString() : "nenhum material com " + texto;
+        }
+
+        internal static string Descrever(Material m, Renderer r)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append($"mat {m.name} [{(m.shader != null ? m.shader.name : "-")}] fila {m.renderQueue} em {r.transform.root.name}/{r.name} kw={string.Join(",", m.shaderKeywords)} | ");
+            var sh = m.shader;
+            for (int i = 0; sh != null && i < sh.GetPropertyCount(); i++)
+            {
+                string p = sh.GetPropertyName(i);
+                try
+                {
+                    switch (sh.GetPropertyType(i))
+                    {
+                        case UnityEngine.Rendering.ShaderPropertyType.Color: sb.Append($"{p}={m.GetColor(p)} "); break;
+                        case UnityEngine.Rendering.ShaderPropertyType.Vector: sb.Append($"{p}={m.GetVector(p)} "); break;
+                        case UnityEngine.Rendering.ShaderPropertyType.Texture:
+                            var t = m.GetTexture(p);
+                            if (t != null) sb.Append($"{p}={t.name}({t.width}x{t.height}) ");
+                            break;
+                        default: sb.Append($"{p}={m.GetFloat(p):0.###} "); break;
+                    }
+                }
+                catch { }
+            }
+            return sb.AppendLine().ToString();
+        }
+    }
+}
