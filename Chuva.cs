@@ -593,11 +593,15 @@ namespace BetterGraphics
                     _longe[i] = Bloco("BetterGraphics_ChuvaLonge" + i, _matChuvaLonge, 9000, AlturaLonge, 0.03f, 0.05f, 0.03f);
                 }
             }
-            // Vento do clima inclina a chuva (até ~25° com vento forte).
+            // Vento do clima inclina a chuva (até ~25° com vento forte), com a direção girando e a força
+            // em rajadas: soma de senos, suave e barata (nada de Random por quadro).
             float vento = 0.25f;
             try { vento = Mathf.Clamp01(Luz.Sky.Weather.currentActiveWeatherPreset.WindStrenght); } catch { }
-            var dirVento = new Vector3(0.8f, 0f, 0.6f);
-            float inclinacao = vento * 0.45f;
+            float t = Time.time;
+            float rajada = 1f + 0.3f * (Mathf.Sin(t * 0.31f) * 0.6f + Mathf.Sin(t * 0.73f + 1.7f) * 0.4f);
+            float giro = 40f * Mathf.Sin(t * 0.11f + 2f);
+            var dirVento = Quaternion.AngleAxis(giro, Vector3.up) * new Vector3(0.8f, 0f, 0.6f);
+            float inclinacao = vento * 0.45f * rajada;
             var queda = (Vector3.down + dirVento * inclinacao).normalized;
 
             var c = cam.transform.position;

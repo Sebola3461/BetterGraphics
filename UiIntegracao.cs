@@ -25,6 +25,9 @@ namespace BetterGraphics
             PBSLoaderCommonInterface.PainelMods.Faixa(C, "ChaoBrilhoSeco", 0f, 1f, 0.05f);
             PBSLoaderCommonInterface.PainelMods.Faixa(C, "ChaoBrilhoMolhado", 0f, 1f, 0.05f);
             PBSLoaderCommonInterface.PainelMods.Faixa(C, "ChaoBaseUmida", 0f, 1f, 0.02f);
+            PBSLoaderCommonInterface.PainelMods.Faixa(C, "ProfundidadeAbertura", 1.8f, 16f, 0.1f);
+            PBSLoaderCommonInterface.PainelMods.Faixa(C, "ProfundidadeFocal", 24f, 85f, 1f);
+            PBSLoaderCommonInterface.PainelMods.Faixa(C, "ChuvaFrio", 0f, 30f, 1f);
         }
     }
 }

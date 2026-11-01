@@ -3,7 +3,7 @@ using MelonLoader;
 using PBSLoaderCommonUtils;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(BetterGraphics.BetterGraphicsMod), "BetterGraphics", "1.0.0", "nzrn")]
+[assembly: MelonInfo(typeof(BetterGraphics.BetterGraphicsMod), "BetterGraphics", "1.1.0", "nzrn")]
 [assembly: MelonGame(null, "Proton Bus Simulator")]
 
 namespace BetterGraphics
@@ -72,6 +72,7 @@ namespace BetterGraphics
         public override void OnLateUpdate()
         {
             Lab.Camera();
+            if (Cfg.Ativo.Value) Seguro(Pos.Quadro, "DofQuadro");
             if (Cfg.Ativo.Value) Seguro(GI.Quadro, "GIQuadro");
             if (Cfg.Ativo.Value) Seguro(() => Luz.Aplicar(null), "LuzQuadro"); // reforço caso o patch no Enviro não rode
         }
@@ -144,7 +145,7 @@ namespace BetterGraphics
     {
         internal static MelonPreferences_Category Cat;
         internal static MelonPreferences_Entry<bool> Ativo, DesligarNativo, Deferred, AmbienteCeu, AutoExposicao, AO, SSR,
-            Sonda, ReflexoPintura, VidrosAtivo, Volumetrica, RaiosSol, RadiantGI, ChaoAtivo, VolumeDoJogo, CorrigirLayer, VidroSemSombra, CeuOclusao, ChaoPocas, ChuvaEfeitos;
+            Sonda, ReflexoPintura, VidrosAtivo, Volumetrica, RaiosSol, RadiantGI, ChaoAtivo, VolumeDoJogo, CorrigirLayer, VidroSemSombra, CeuOclusao, ChaoPocas, ChuvaEfeitos, Dof;
         internal static MelonPreferences_Entry<float> VarreduraMs, GIIntensidade, GIIntensidadeDentro, GINoite, GIAtenuacao, GIAlcance, GIMapaSombraForca;
         internal static MelonPreferences_Entry<bool> GIAtivo, GIRebater, GISondas, GIMapaSombra;
         internal static MelonPreferences_Entry<int> GIRaios, GIQualidade, ChuvaEmissoesQuadro;
@@ -155,7 +156,7 @@ namespace BetterGraphics
             Exposicao, ExposicaoMin, ExposicaoMax, Contraste, Saturacao, Temperatura, Bloom, BloomLimiar, AOIntensidade,
             SondaIntervalo, BrilhoMax, VidroReflexo, VidroReflexoPerto, VidroReflexoDentro, VidroVeu, VidroVeuPerto, VidroTom,
             VolumetricaForca, RaiosSolForca, MapaBrilho, ChaoSeco, ChaoMolhado, CurvaPe, CurvaOmbro, ChaoEscurecer, ChuvaExposicao, CabineExposicao, CabineAmbiente, CabineMedicao, ChuvaNeblina, ChaoBaseUmida, ChuvaPneus, ChuvaPocas, ChuvaRespingoChao, ChuvaSarjeta, ChuvaDensidade, ChuvaPingos,
-            Neblina, CeuOclusaoMin, CeuOclusaoAlcance, LatariaBrilho, LatariaVerniz, CurvaPeAlcance, CurvaOmbroAlcance, CurvaOmbroAngulo, CabinePe;
+            Neblina, CeuOclusaoMin, CeuOclusaoAlcance, LatariaBrilho, LatariaVerniz, CurvaPeAlcance, CurvaOmbroAlcance, CurvaOmbroAngulo, CabinePe, DofAbertura, DofFocal, ChuvaFrio;
 
         internal static void Criar()
         {
@@ -186,6 +187,7 @@ namespace BetterGraphics
             ChaoEscurecer = c.CreateEntry("ChaoEscurecerMolhado", 0.65f, "Cor do chão encharcado em relação ao seco");
             ChuvaExposicao = c.CreateEntry("ChuvaExposicao", -0.35f, "Exposição a mais (EV) com chuva forte de dia (some à noite)");
             ChuvaNeblina = c.CreateEntry("ChuvaNeblina", 0.001f, "Névoa com chuva forte (cortina d'água; 0.001 = ~1,5 km de visibilidade)");
+            ChuvaFrio = c.CreateEntry("ChuvaFrio", 8f, "Quanto a chuva de dia puxa a cor para o frio (0 a 100)");
 
             VarreduraMs = c.CreateEntry("VarreduraMsPorQuadro", 1.0f, "Tempo máximo por quadro procurando vidros/pinturas/chão novos (ms)");
 
@@ -242,6 +244,9 @@ namespace BetterGraphics
             AO = c.CreateEntry("OclusaoAmbiente", true, "Oclusão de ambiente");
             AOIntensidade = c.CreateEntry("OclusaoIntensidade", 0.8f, "Intensidade da oclusão");
             SSR = c.CreateEntry("ReflexosTela", true, "Reflexos em tela (chão molhado, superfícies lisas)");
+            Dof = c.CreateEntry("Profundidade", true, "Profundidade de campo: foco automático no que a câmera está olhando");
+            DofAbertura = c.CreateEntry("ProfundidadeAbertura", 7.1f, "Abertura do diafragma em f/: menor desfoque mais forte (1.8 desfoque máximo, 22 tudo em foco)");
+            DofFocal = c.CreateEntry("ProfundidadeFocal", 35f, "Distância focal da lente (mm): 24 a 50 para foto, acima de 85 teleobjetiva (mais desfoque)");
 
             Sonda = c.CreateEntry("SondaReflexo", true, "Sonda de reflexo em tempo real sobre o ônibus");
             SondaResolucao = c.CreateEntry("SondaResolucao", 256, "128, 256 ou 512");

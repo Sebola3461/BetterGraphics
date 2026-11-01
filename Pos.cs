@@ -16,7 +16,7 @@ namespace BetterGraphics
 
         static GameObject _go;
         static PostProcessVolume _vol;
-        static AutoExposure _exp; static ColorGrading _cor; static AmbientOcclusion _ao; static ScreenSpaceReflections _ssr; static Bloom _bloom;
+        static AutoExposure _exp; static ColorGrading _cor; static AmbientOcclusion _ao; static ScreenSpaceReflections _ssr; static Bloom _bloom; static DepthOfField _dof;
 
         internal static PostProcessVolume Volume => _vol;
         internal static Camera Cam => _cam;
@@ -87,6 +87,7 @@ namespace BetterGraphics
                 _ao = perfil.AddSettings(Il2CppType.Of<AmbientOcclusion>()).Cast<AmbientOcclusion>();
                 _ssr = perfil.AddSettings(Il2CppType.Of<ScreenSpaceReflections>()).Cast<ScreenSpaceReflections>();
                 _bloom = perfil.AddSettings(Il2CppType.Of<Bloom>()).Cast<Bloom>();
+                _dof = perfil.AddSettings(Il2CppType.Of<DepthOfField>()).Cast<DepthOfField>();
                 _vol = _go.AddComponent<PostProcessVolume>();
                 _vol.isGlobal = true; _vol.priority = 1000f; _vol.weight = 1f;
                 _vol.sharedProfile = perfil;
@@ -153,7 +154,8 @@ namespace BetterGraphics
             Set(_cor.postExposure, Cfg.Exposicao.Value + Cfg.ChuvaExposicao.Value * Chao.Umidade * GI.DiaFator() + cabine);
             Set(_cor.contrast, Cfg.Contraste.Value);
             Set(_cor.saturation, Cfg.Saturacao.Value);
-            Set(_cor.temperature, Cfg.Temperatura.Value);
+            // Chuva de dia puxa o tom para o frio (o céu fechado azula a luz difusa).
+            Set(_cor.temperature, Cfg.Temperatura.Value - Cfg.ChuvaFrio.Value * Chao.Umidade * GI.DiaFator());
 
             _ao.active = Cfg.AO.Value;
             Liga(_ao);
@@ -177,6 +179,37 @@ namespace BetterGraphics
             Set(_bloom.threshold, Cfg.BloomLimiar.Value);
             Set(_bloom.softKnee, 0.5f);
             Set(_bloom.diffusion, 7f);
+
+            // Profundidade de campo (o foco em si é atualizado a cada quadro em Quadro).
+            _dof.active = Cfg.Dof.Value;
+            Liga(_dof);
+            Set(_dof.aperture, Cfg.DofAbertura.Value);
+            Set(_dof.focalLength, Cfg.DofFocal.Value);
+        }
+
+        // ---- foco da profundidade de campo (todo quadro) ----
+
+        static float _foco = 10f, _alvoFoco = 10f, _proximoRaio;
+
+        // Foco no que está no meio da tela, como o olho/câmera: raio de vez em quando, alvo suavizado a
+        // cada quadro (troca de foco em ~0,3 s). De dentro do ônibus o foco não vem mais perto que 6 m:
+        // o painel e o volante ficam levemente fora de foco, como numa foto real tirada de dentro.
+        internal static void Quadro()
+        {
+            if (_dof == null || !Cfg.Dof.Value) return;
+            var cam = _cam;
+            if (cam == null) return;
+            if (Time.unscaledTime >= _proximoRaio)
+            {
+                _proximoRaio = Time.unscaledTime + 0.12f;
+                float d = 60f;
+                if (Physics.Raycast(new Ray(cam.transform.position, cam.transform.forward), out var hit, 300f, ~0, QueryTriggerInteraction.Ignore))
+                    d = hit.distance;
+                bool dentro = Veiculo.Dentro(cam.transform.position);
+                _alvoFoco = dentro ? Mathf.Clamp(d, 6f, 120f) : Mathf.Clamp(d, 1.2f, 200f);
+            }
+            _foco = Mathf.Lerp(_foco, _alvoFoco, 1f - Mathf.Exp(-Time.deltaTime * 3f));
+            Set(_dof.focusDistance, _foco);
         }
 
         // ParameterOverride<T>.value fica numa classe genérica, e o acessor do Il2CppInterop lê/escreve no
