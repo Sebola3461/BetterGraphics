@@ -60,7 +60,7 @@ namespace BetterGraphics
                 _sonda = _go.AddComponent<ReflectionProbe>();
                 _sonda.mode = ReflectionProbeMode.Realtime;
                 _sonda.refreshMode = ReflectionProbeRefreshMode.ViaScripting;
-                _sonda.timeSlicingMode = ReflectionProbeTimeSlicingMode.IndividualFaces;
+                _sonda.timeSlicingMode = ReflectionProbeTimeSlicingMode.NoTimeSlicing;   // render completo por chamada (IndividualFaces deixava o cubo incompleto entre faces: o reflexo piscava e sumia)
                 _sonda.hdr = true;
                 // Projeção em caixa: as laterais do ônibus refletem a rua com paralaxe (sem ela o reflexo
                 // parece pintado na lataria e não anda quando a câmera se move).
@@ -98,6 +98,7 @@ namespace BetterGraphics
             if (_id != -1 && !_sonda.IsFinishedRendering(_id)) return;
             _id = _sonda.RenderProbe();
             _proxima = Time.unscaledTime + Mathf.Max(0f, Cfg.SondaIntervalo.Value);
+            if (_sonda.realtimeTexture == null) Log.Aviso("Sonda: textura de reflexo nula após render (será renderizada de novo)");
         }
 
         static void RestaurarPinturas()

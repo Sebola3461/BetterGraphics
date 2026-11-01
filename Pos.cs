@@ -180,9 +180,9 @@ namespace BetterGraphics
             Set(_bloom.softKnee, 0.5f);
             Set(_bloom.diffusion, 5f);
 
-            // Profundidade de campo (o foco em si é atualizado a cada quadro em Quadro).
-            _dof.active = Cfg.Dof.Value;
-            Liga(_dof);
+            // Profundidade de campo: ligar/desligar e o foco ficam só no Quadro (todo quadro), porque
+            // dependem de a câmera estar dentro ou fora do ônibus (o Configurar roda por segundo e não pode
+            // religar o efeito por baixo).
             Set(_dof.aperture, Cfg.DofAbertura.Value);
             Set(_dof.focalLength, Cfg.DofFocal.Value);
         }
@@ -190,7 +190,6 @@ namespace BetterGraphics
         // ---- foco da profundidade de campo (todo quadro) ----
 
         static float _foco = 10f, _alvoFoco = 10f, _proximoRaio;
-        static bool _dofLigado;
 
         // Foco automático no que está no meio da tela (raio de vez em quando, alvo suavizado a cada
         // quadro: troca de foco em ~0,3 s, como o olho). De dentro do ônibus o DoF fica DESLIGADO: painel
@@ -198,16 +197,14 @@ namespace BetterGraphics
         internal static void Quadro()
         {
             if (_dof == null) return;
+            // De dentro do ônibus o DoF fica DESLIGADO todo quadro (não basta detectar a transição: o
+            // Configurar roda a cada segundo e o jogo pode nascer com a câmera já dentro): painel e
+            // volante sempre nítidos; o desfoque de lente é para as fotos de fora.
             bool dentro = _cam != null && Veiculo.Dentro(_cam.transform.position);
             bool on = Cfg.Dof.Value && !dentro;
-            if (on != _dofLigado)
-            {
-                _dofLigado = on;
-                _dof.active = on;
-                _dof.enabled.overrideState = true;
-                Escrever<byte>(_dof.enabled, (byte)(on ? 1 : 0));
-                if (on) _proximoRaio = 0f;
-            }
+            _dof.active = on;
+            _dof.enabled.overrideState = true;
+            Escrever<byte>(_dof.enabled, (byte)(on ? 1 : 0));
             if (!on || _cam == null) return;
             if (Time.unscaledTime >= _proximoRaio)
             {

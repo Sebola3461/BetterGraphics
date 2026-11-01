@@ -3,7 +3,7 @@ using MelonLoader;
 using PBSLoaderCommonUtils;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(BetterGraphics.BetterGraphicsMod), "BetterGraphics", "1.1.1", "nzrn")]
+[assembly: MelonInfo(typeof(BetterGraphics.BetterGraphicsMod), "BetterGraphics", "1.1.2", "nzrn")]
 [assembly: MelonGame(null, "Proton Bus Simulator")]
 
 namespace BetterGraphics
@@ -250,7 +250,7 @@ namespace BetterGraphics
 
             Sonda = c.CreateEntry("SondaReflexo", true, "Sonda de reflexo em tempo real sobre o ônibus");
             SondaResolucao = c.CreateEntry("SondaResolucao", 256, "128, 256 ou 512");
-            SondaIntervalo = c.CreateEntry("SondaIntervalo", 0.2f, "Segundos entre atualizações da sonda");
+            SondaIntervalo = c.CreateEntry("SondaIntervalo", 0.5f, "Segundos entre atualizações da sonda (0.5 = cubo completo a cada meio segundo)");
             ReflexoPintura = c.CreateEntry("ReflexoPintura", true, "Liga reflexos nas pinturas dos veículos (vêm desligados)");
             BrilhoMax = c.CreateEntry("PinturaBrilhoMax", 0.75f, "Limite de smoothness das pinturas (1 = cromado; abaixo de ~0.6 a tinta fica fosca, com cara de papel)");
 
