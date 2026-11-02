@@ -3,7 +3,7 @@ using MelonLoader;
 using PBSLoaderCommonUtils;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(BetterGraphics.BetterGraphicsMod), "BetterGraphics", "1.6.0", "nzrn")]
+[assembly: MelonInfo(typeof(BetterGraphics.BetterGraphicsMod), "BetterGraphics", "1.7.0", "nzrn")]
 [assembly: MelonGame(null, "Proton Bus Simulator")]
 
 namespace BetterGraphics
@@ -49,6 +49,7 @@ namespace BetterGraphics
             WindshieldRain.CenaMudou();
             RainFall.CenaMudou();
             DeferredLighting.CenaMudou();
+            AmbientLight.CenaMudou();
         }
 
         public override void OnUpdate()
@@ -71,6 +72,7 @@ namespace BetterGraphics
                 Seguro(Molhado.Manter, "Molhado");
                 Seguro(WindshieldRain.Manter, "ChuvaVidro");
                 Seguro(DeferredLighting.Manter, "Deferred");
+                Seguro(AmbientLight.Manter, "Ambiente");
             }
             Seguro(Varredura.Quadro, "Varredura");
             Seguro(Reflexos.Quadro, "Sonda");
@@ -87,6 +89,7 @@ namespace BetterGraphics
             if (Cfg.Ativo.Value) Seguro(Interior.Quadro, "InteriorQuadro");
             if (Cfg.Ativo.Value) Seguro(Molhado.Quadro, "MolhadoQuadro");
             if (Cfg.Ativo.Value) Seguro(WindshieldRain.Quadro, "ChuvaVidroQuadro");
+            if (Cfg.Ativo.Value) Seguro(AmbientLight.Quadro, "AmbienteQuadro");
             if (Cfg.Ativo.Value) Seguro(RainFall.Quadro, "ChuvaGPU"); else RainFall.CenaMudou();
             if (Cfg.Ativo.Value) Seguro(() => Luz.Aplicar(null), "LuzQuadro"); // reforço caso o patch no Enviro não rode
         }
@@ -115,6 +118,7 @@ namespace BetterGraphics
             Seguro(Molhado.Restaurar, "Molhado");
             Seguro(WindshieldRain.Restaurar, "ChuvaVidro");
             Seguro(DeferredLighting.Restaurar, "Deferred");
+            Seguro(AmbientLight.Restaurar, "Ambiente");
             Seguro(Chuva.CenaMudou, "Chuva");
             Varredura.Reiniciar(); // ao religar, tudo é reaplicado
         }
@@ -174,7 +178,7 @@ namespace BetterGraphics
             Exposicao, ExposicaoMin, ExposicaoMax, Contraste, Saturacao, Temperatura, Bloom, BloomLimiar, AOIntensidade,
             SondaIntervalo, BrilhoMax, VidroReflexo, VidroReflexoPerto, VidroReflexoDentro, VidroVeu, VidroVeuPerto, VidroTom,
             VolumetricaForca, RaiosSolForca, MapaBrilho, ChaoSeco, ChaoMolhado, CurvaPe, CurvaOmbro, ChaoEscurecer, ChuvaExposicao, CabineExposicao, CabineAmbiente, CabineMedicao, ChaoBaseUmida, ChuvaPneus, ChuvaPocas, ChuvaSarjeta,
-            Neblina, CeuOclusaoMin, CeuOclusaoAlcance, LatariaBrilho, LatariaVerniz, CurvaPeAlcance, CurvaOmbroAlcance, CurvaOmbroAngulo, CabinePe, DofAbertura, DofFocal, ChuvaFrio, JanelaRebate, JanelaForca;
+            Neblina, CeuOclusaoMin, CeuOclusaoAlcance, LatariaBrilho, LatariaVerniz, CurvaPeAlcance, CurvaPeNoite, CurvaOmbroAlcance, CurvaOmbroAngulo, CabinePe, DofAbertura, DofFocal, ChuvaFrio, JanelaRebate, JanelaForca;
 
         internal static void Criar()
         {
@@ -239,13 +243,14 @@ namespace BetterGraphics
 
             AutoExposicao = c.CreateEntry("AutoExposicao", true, "Adaptação do olho (túnel, abrigo, cabine)");
             Tonemapper = c.CreateEntry("Tonemapper", "Custom", "ACES (filme, puxa azuis para o roxo) ou Neutral (sem desvio de cor)");
-            CurvaPe = c.CreateEntry("CurvaPe", 0.6f, "Tonemapper Custom: força do pé (sombras firmes)");
+            CurvaPe = c.CreateEntry("CurvaPe", 0.4f, "Tonemapper Custom: força do pé. 0.4 deixa a sombra de dia legível e na razão das fotos de referência (0.6 esmagava a sombra no preto)");
             CurvaOmbro = c.CreateEntry("CurvaOmbro", 1.8f, "Tonemapper Custom: força do ombro (até onde os claros vão antes de comprimir)");
+            CurvaPeNoite = c.CreateEntry("CurvaPeNoite", 0.65f, "Pé da curva à noite (pretos fundos fora da luz dos postes, como nas fotos noturnas)");
             CurvaPeAlcance = c.CreateEntry("CurvaPeAlcance", 0.5f, "Tonemapper Custom: até onde vai o pé (0 a 1)");
             CurvaOmbroAlcance = c.CreateEntry("CurvaOmbroAlcance", 2.2f, "Tonemapper Custom: margem dos claros em EV antes de saturar (curto = branco estoura)");
             CurvaOmbroAngulo = c.CreateEntry("CurvaOmbroAngulo", 0f, "Tonemapper Custom: inclinação final do ombro (0 a 1)");
             Exposicao = c.CreateEntry("Exposicao", -1f, "Compensação de exposição (EV)");
-            ExposicaoMin = c.CreateEntry("ExposicaoMin", -3.5f, "Luminância média mínima considerada (EV100): abaixo disso a cena fica escura de verdade. -3.5 deixa a rua à noite no brilho das fotos de referência (-2.5 escurecia demais)");
+            ExposicaoMin = c.CreateEntry("ExposicaoMin", -2.9f, "Luminância média mínima considerada (EV100): abaixo disso a cena fica escura de verdade. -2.9 (com o pé de curva da noite) deixa a rua à noite no brilho das fotos de referência");
             ExposicaoMax = c.CreateEntry("ExposicaoMax", 5f, "Luminância média máxima considerada (EV100); sol do meio-dia fica perto de +3,5");
             CabineExposicao = c.CreateEntry("CabineExposicao", 0.3f, "Exposição a mais (EV) com a câmera dentro do ônibus");
             CabinePe = c.CreateEntry("CabinePe", 0.3f, "Pé da curva com a câmera dentro do ônibus (mais suave: painel visível)");
@@ -296,8 +301,9 @@ namespace BetterGraphics
             CreateLightingEntries();
         }
 
-        internal static MelonPreferences_Entry<bool> RainGlassEnabled, WiperActive, RainFallEnabled, RainCollision, LightingCustomDeferred, LightingPhysicalFalloff;
-        internal static MelonPreferences_Entry<float> LightingRangeMultiplier, LightingBrightness, LightingStreetlightKelvin;
+        internal static MelonPreferences_Entry<bool> RainGlassEnabled, WiperActive, RainFallEnabled, RainCollision, LightingCustomDeferred, LightingPhysicalFalloff, LightingCustomAmbient, LightingCustomReflections;
+        internal static MelonPreferences_Entry<float> LightingRangeMultiplier, LightingBrightness, LightingStreetlightKelvin,
+            LightingAmbientStrength, LightingAmbientSkySaturation, LightingAmbientWallBounce, LightingGroundAlbedo, LightingCityGlow;
         internal static MelonPreferences_Entry<int> LightingShadowedStreetlights;
         internal static MelonPreferences_Entry<float[]> RainWindVelocity;
         internal static MelonPreferences_Entry<float> RainIntensity, RainGlobalWetness, RainAirHumidity, RainParticleDensity, RainTerminalVelocity, RainMotionBlurStretch;
@@ -314,6 +320,13 @@ namespace BetterGraphics
             LightingRangeMultiplier = l.CreateEntry("light_range_multiplier", 1.4f, "Multiplica o alcance das luzes: a cauda fraca da queda física chega ao poste vizinho");
             LightingBrightness = l.CreateEntry("light_brightness", 2f, "Brilho das luzes pontuais e spot (1 = igual ao da Unity a 40% do alcance original; 2 = calibrado contra fotos de rua à noite)");
             LightingStreetlightKelvin = l.CreateEntry("streetlight_kelvin", 4500f, "Cor dos postes do mapa em kelvin (4000 a 5000 = LED; 2000 = sódio laranja; 0 = cor original do mapa)");
+            LightingCustomReflections = l.CreateEntry("custom_reflections", true, "Reflexos deferred próprios: energia certa, oclusão especular e reflexo do céu só onde o ponto enxerga o céu");
+            LightingCustomAmbient = l.CreateEntry("custom_ambient", true, "Luz ambiente própria por pixel: céu pela fração visível de cada ponto, rebote do chão iluminado e céu da cidade à noite");
+            LightingAmbientStrength = l.CreateEntry("ambient_strength", 1f, "Força da luz ambiente própria");
+            LightingAmbientSkySaturation = l.CreateEntry("ambient_sky_saturation", 0.7f, "Saturação da luz do céu na sombra (1 = a do céu do jogo; menos = sombra menos azul)");
+            LightingAmbientWallBounce = l.CreateEntry("ambient_wall_bounce", 0.5f, "Quanto do rebote do chão o que tapa o céu (paredes, marquises) devolve");
+            LightingGroundAlbedo = l.CreateEntry("ground_albedo", 0.25f, "Albedo médio do chão para o rebote da luz do sol (asfalto 0.1, concreto 0.3)");
+            LightingCityGlow = l.CreateEntry("city_glow", 0.03f, "Brilho do céu da cidade à noite na luz ambiente (poluição luminosa)");
             LightingShadowedStreetlights = l.CreateEntry("shadowed_streetlights", 2, "Quantos postes perto da câmera projetam sombra (cada um custa um mapa de sombra cúbico)");
         }
 

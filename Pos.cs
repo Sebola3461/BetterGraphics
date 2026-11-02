@@ -138,7 +138,9 @@ namespace BetterGraphics
             // pé firme nas sombras, ombro suave nos claros.
             // Na cabine o pé é mais suave: a tela tem rua clara e painel escuro ao mesmo tempo, e o olho se
             // adapta localmente (o painel não some no preto como numa foto exposta pela rua).
-            Set(_cor.toneCurveToeStrength, dentro ? Cfg.CabinePe.Value : Cfg.CurvaPe.Value);
+            // À noite o pé fica mais firme: nas fotos noturnas a árvore e a sombra fora dos postes vão ao preto fundo,
+            // enquanto de dia a sombra fica legível.
+            Set(_cor.toneCurveToeStrength, dentro ? Cfg.CabinePe.Value : Mathf.Lerp(Cfg.CurvaPeNoite.Value, Cfg.CurvaPe.Value, GI.DiaFator()));
             Set(_cor.toneCurveToeLength, Cfg.CurvaPeAlcance.Value);
             Set(_cor.toneCurveShoulderStrength, Cfg.CurvaOmbro.Value);
             Set(_cor.toneCurveShoulderLength, Cfg.CurvaOmbroAlcance.Value);

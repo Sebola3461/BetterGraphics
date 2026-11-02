@@ -142,7 +142,7 @@ namespace BetterGraphics
 
         // Mundo -> caixa da carroceria do ônibus do jogador (0 a 1). A caixa medida inclui os retrovisores; a
         // carroceria é ~62% da largura dela.
-        static bool BusColumn(out Matrix4x4 m)
+        internal static bool BusColumn(out Matrix4x4 m)
         {
             m = Matrix4x4.identity;
             var bus = Veiculo.Raiz();

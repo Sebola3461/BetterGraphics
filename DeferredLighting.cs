@@ -16,8 +16,8 @@ namespace BetterGraphics
         // Queda física igual à da Unity a 40% do alcance original (lá as duas valem ~0,2).
         const float BaseK = 0.0325f;
 
-        static Shader _shader;
-        static bool _applied, _noShader;
+        static Shader _shader, _reflShader;
+        static bool _applied, _noShader, _reflApplied, _noReflShader;
 
         sealed class Original { public Light L; public float Range; public Color Color; public LightShadows Shadows; }
         static readonly Dictionary<IntPtr, Original> _changed = new();
@@ -40,15 +40,49 @@ namespace BetterGraphics
                 _applied = true;
                 Log.Msg("Iluminação deferred própria ligada");
             }
+            Reflections();
             float m = Mathf.Max(Cfg.LightingRangeMultiplier.Value, 1f);
             Shader.SetGlobalFloat("_BG_LightK", BaseK * Mathf.Max(Cfg.LightingBrightness.Value, 0f) / (m * m));
             Shader.SetGlobalFloat("_BG_PhysicalFalloff", Cfg.LightingPhysicalFalloff.Value ? 1f : 0f);
             Shader.SetGlobalFloat("_BG_SunRadius", 0.0047f);
         }
 
+        // Reflexos deferred próprios (shader DeferredReflections), com preferência própria.
+        static void Reflections()
+        {
+            bool want = Cfg.LightingCustomReflections.Value;
+            if (want && !_reflApplied && !_noReflShader)
+            {
+                _reflShader ??= Pacote.Shader("DeferredReflections");
+                if (_reflShader == null) { _noReflShader = true; return; }
+                GraphicsSettings.SetCustomShader(BuiltinShaderType.DeferredReflections, _reflShader);
+                GraphicsSettings.SetShaderMode(BuiltinShaderType.DeferredReflections, BuiltinShaderMode.UseCustom);
+                _reflApplied = true;
+                Log.Msg("Reflexos deferred próprios ligados");
+            }
+            else if (!want && _reflApplied)
+            {
+                GraphicsSettings.SetShaderMode(BuiltinShaderType.DeferredReflections, BuiltinShaderMode.UseBuiltin);
+                _reflApplied = false;
+            }
+        }
+
+        static int _reflDebug;
+        internal static string ReflDebug(int v) { _reflDebug = v; return "reflexos debug " + v; }
+
         // Todo quadro (barato: só refaz a escolha a cada 0,5 s).
         internal static void Quadro()
         {
+            if (_reflApplied)
+            {
+                var cam0 = Pos.Cam;
+                bool shelter = Molhado.Abrigo(cam0, out var map, out var area);
+                if (shelter) Shader.SetGlobalTexture("_BG_ReflShelter", map);
+                Shader.SetGlobalVector("_BG_ReflShelterArea", shelter ? area : Vector4.zero);
+                // O Luz já escalou o reflexo do céu pela visibilidade medida da câmera; aqui é por ponto.
+                Shader.SetGlobalFloat("_BG_ReflSkyUndo", Cfg.AmbienteCeu.Value ? 1f / Mathf.Max(Ceu.Fator(), 0.05f) : 1f);
+                Shader.SetGlobalFloat("_BG_ReflDebug", _reflDebug);
+            }
             if (!_applied) return;
             if (Time.unscaledTime >= _nextScan)
             {
@@ -120,12 +154,17 @@ namespace BetterGraphics
                 GraphicsSettings.SetShaderMode(BuiltinShaderType.DeferredShading, BuiltinShaderMode.UseBuiltin);
                 _applied = false;
             }
+            if (_reflApplied)
+            {
+                GraphicsSettings.SetShaderMode(BuiltinShaderType.DeferredReflections, BuiltinShaderMode.UseBuiltin);
+                _reflApplied = false;
+            }
             foreach (var o in _changed.Values)
                 try { if (o.L != null && !o.L.WasCollected) { o.L.range = o.Range; o.L.color = o.Color; o.L.shadows = o.Shadows; } } catch { }
             _changed.Clear(); _shadowed.Clear(); _nextScan = 0f;
         }
 
         internal static string Estado() =>
-            $"deferred próprio {(_applied ? "ligado" : _noShader ? "shader falhou" : "desligado")}, {_changed.Count} luzes ajustadas, {_shadowed.Count} postes com sombra, k {BaseK * Cfg.LightingBrightness.Value / Mathf.Pow(Mathf.Max(Cfg.LightingRangeMultiplier.Value, 1f), 2f):0.0000}";
+            $"deferred próprio {(_applied ? "ligado" : _noShader ? "shader falhou" : "desligado")}, reflexos {(_reflApplied ? "próprios" : _noReflShader ? "shader falhou" : "da Unity")}, {_changed.Count} luzes ajustadas, {_shadowed.Count} postes com sombra, k {BaseK * Cfg.LightingBrightness.Value / Mathf.Pow(Mathf.Max(Cfg.LightingRangeMultiplier.Value, 1f), 2f):0.0000}";
     }
 }

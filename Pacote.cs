@@ -55,7 +55,7 @@ namespace BetterGraphics
             return sh;
         }
 
-        static T Funcao<T>(string nome) where T : Delegate
+        internal static T Funcao<T>(string nome) where T : Delegate
         {
             var p = IL2CPP.il2cpp_resolve_icall(nome);
             if (p == IntPtr.Zero) { Log.Aviso("Função nativa não encontrada: " + nome); return null; }
