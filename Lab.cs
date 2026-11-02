@@ -211,6 +211,8 @@ namespace BetterGraphics
                 case "molhado": Resp(Molhado.Estado()); return;
                 case "gotas": Resp(WindshieldRain.Estado()); return;
                 case "chuva": Resp(Chuva.Estado()); return;
+                case "deferred": Resp(DeferredLighting.Estado()); return;
+                case "luzes": Resp(Luzes(p.Length > 1 ? int.Parse(p[1]) : 15)); return;  // luzes N: as N luzes pontuais/spot mais perto da câmera
                 case "gotasdebug": Resp(WindshieldRain.Debug(p[1] == "1")); return;
                 case "pelicula": Resp(WindshieldRain.SaveFilm(Path.Combine(_prints, "pelicula.png"))); return; // película do para-brisa com as palhetas em vermelho
                 case "limpador": PBSLoaderCommonUtils.Veiculos.Comandos.Limpadores(); Resp("ok limpador"); return;              // liga/desliga a chave do limpador
@@ -451,6 +453,27 @@ namespace BetterGraphics
                 sb.AppendLine($"  luz {luz.name} {luz.type} int {luz.intensity:0.##} alcance {luz.range:0.#} sombra {luz.shadows} d {d:0.#} raiz {luz.transform.root.name} mask {luz.cullingMask}");
             }
             sb.Append($"  sombras qualidade: dist {QualitySettings.shadowDistance} cascatas {QualitySettings.shadowCascades} proj {QualitySettings.shadowProjection} res {QualitySettings.shadowResolution} shadows {QualitySettings.shadows}");
+            return sb.ToString();
+        }
+
+        static string Luzes(int n)
+        {
+            var cam = Pos.Cam;
+            if (cam == null) return "sem câmera";
+            var c = cam.transform.position;
+            var lista = new List<(float d, Light l)>();
+            foreach (var l in UnityEngine.Object.FindObjectsOfType<Light>())
+                if (l.type == LightType.Point || l.type == LightType.Spot) lista.Add((Vector3.Distance(l.transform.position, c), l));
+            lista.Sort((a, b) => a.d.CompareTo(b.d));
+            var sb = new System.Text.StringBuilder($"{lista.Count} luzes pontuais/spot; ativas perto:\n");
+            int k = 0;
+            foreach (var (d, l) in lista)
+            {
+                if (!l.enabled || !l.gameObject.activeInHierarchy) continue;
+                if (k++ >= n) break;
+                var co = l.color;
+                sb.AppendLine($"  {d,5:0.0} m {l.type,-5} alcance {l.range,5:0.0} intens {l.intensity,5:0.00} cor ({co.r:0.00},{co.g:0.00},{co.b:0.00}) ângulo {l.spotAngle:0} sombra {l.shadows} modo {l.renderMode} altura {l.transform.position.y - c.y:0.0} | {l.transform.root.name}/{l.name}");
+            }
             return sb.ToString();
         }
 

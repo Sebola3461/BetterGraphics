@@ -3,7 +3,7 @@ using MelonLoader;
 using PBSLoaderCommonUtils;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(BetterGraphics.BetterGraphicsMod), "BetterGraphics", "1.5.1", "nzrn")]
+[assembly: MelonInfo(typeof(BetterGraphics.BetterGraphicsMod), "BetterGraphics", "1.6.0", "nzrn")]
 [assembly: MelonGame(null, "Proton Bus Simulator")]
 
 namespace BetterGraphics
@@ -48,6 +48,7 @@ namespace BetterGraphics
             Molhado.CenaMudou();
             WindshieldRain.CenaMudou();
             RainFall.CenaMudou();
+            DeferredLighting.CenaMudou();
         }
 
         public override void OnUpdate()
@@ -69,11 +70,13 @@ namespace BetterGraphics
                 Seguro(Interior.Manter, "Interior");
                 Seguro(Molhado.Manter, "Molhado");
                 Seguro(WindshieldRain.Manter, "ChuvaVidro");
+                Seguro(DeferredLighting.Manter, "Deferred");
             }
             Seguro(Varredura.Quadro, "Varredura");
             Seguro(Reflexos.Quadro, "Sonda");
             Seguro(Vidros.Quadro, "Vidros");
             Seguro(Chuva.Quadro, "Chuva");
+            if (Cfg.Ativo.Value) Seguro(DeferredLighting.Quadro, "DeferredQuadro");
         }
 
         public override void OnLateUpdate()
@@ -111,6 +114,7 @@ namespace BetterGraphics
             Seguro(Interior.Restaurar, "Interior");
             Seguro(Molhado.Restaurar, "Molhado");
             Seguro(WindshieldRain.Restaurar, "ChuvaVidro");
+            Seguro(DeferredLighting.Restaurar, "Deferred");
             Seguro(Chuva.CenaMudou, "Chuva");
             Varredura.Reiniciar(); // ao religar, tudo é reaplicado
         }
@@ -241,7 +245,7 @@ namespace BetterGraphics
             CurvaOmbroAlcance = c.CreateEntry("CurvaOmbroAlcance", 2.2f, "Tonemapper Custom: margem dos claros em EV antes de saturar (curto = branco estoura)");
             CurvaOmbroAngulo = c.CreateEntry("CurvaOmbroAngulo", 0f, "Tonemapper Custom: inclinação final do ombro (0 a 1)");
             Exposicao = c.CreateEntry("Exposicao", -1f, "Compensação de exposição (EV)");
-            ExposicaoMin = c.CreateEntry("ExposicaoMin", -2.5f, "Luminância média mínima considerada (EV100): abaixo disso a cena fica escura de verdade (noite)");
+            ExposicaoMin = c.CreateEntry("ExposicaoMin", -3.5f, "Luminância média mínima considerada (EV100): abaixo disso a cena fica escura de verdade. -3.5 deixa a rua à noite no brilho das fotos de referência (-2.5 escurecia demais)");
             ExposicaoMax = c.CreateEntry("ExposicaoMax", 5f, "Luminância média máxima considerada (EV100); sol do meio-dia fica perto de +3,5");
             CabineExposicao = c.CreateEntry("CabineExposicao", 0.3f, "Exposição a mais (EV) com a câmera dentro do ônibus");
             CabinePe = c.CreateEntry("CabinePe", 0.3f, "Pé da curva com a câmera dentro do ônibus (mais suave: painel visível)");
@@ -289,9 +293,12 @@ namespace BetterGraphics
             RaiosSol = c.CreateEntry("RaiosSol", false, "Raios radiais em tela do Enviro (vazam o céu pelas frestas: faixas amarelas e véu contra o sol)");
             RaiosSolForca = c.CreateEntry("RaiosSolForca", 0.5f, "Intensidade dos raios radiais");
             CreateRainEntries();
+            CreateLightingEntries();
         }
 
-        internal static MelonPreferences_Entry<bool> RainGlassEnabled, WiperActive, RainFallEnabled, RainCollision;
+        internal static MelonPreferences_Entry<bool> RainGlassEnabled, WiperActive, RainFallEnabled, RainCollision, LightingCustomDeferred, LightingPhysicalFalloff;
+        internal static MelonPreferences_Entry<float> LightingRangeMultiplier, LightingBrightness, LightingStreetlightKelvin;
+        internal static MelonPreferences_Entry<int> LightingShadowedStreetlights;
         internal static MelonPreferences_Entry<float[]> RainWindVelocity;
         internal static MelonPreferences_Entry<float> RainIntensity, RainGlobalWetness, RainAirHumidity, RainParticleDensity, RainTerminalVelocity, RainMotionBlurStretch;
         internal static MelonPreferences_Entry<int[]> RainGridResolution;
@@ -299,6 +306,17 @@ namespace BetterGraphics
             WiperSweepSpeed, WiperMinAngle, WiperMaxAngle, WiperBladeWidth, WiperAccumulation;
 
         // Seções e chaves com os nomes do schema RainSystemConfig (uma seção por bloco).
+        static void CreateLightingEntries()
+        {
+            var l = MelonPreferences.CreateCategory("Lighting", "BetterGraphics: iluminação");
+            LightingCustomDeferred = l.CreateEntry("custom_deferred", true, "Iluminação deferred própria (BRDF GGX com compensação de energia, queda física das luzes)");
+            LightingPhysicalFalloff = l.CreateEntry("physical_falloff", true, "Luzes pontuais e spot caem pelo inverso do quadrado (desligado: queda da Unity)");
+            LightingRangeMultiplier = l.CreateEntry("light_range_multiplier", 1.4f, "Multiplica o alcance das luzes: a cauda fraca da queda física chega ao poste vizinho");
+            LightingBrightness = l.CreateEntry("light_brightness", 2f, "Brilho das luzes pontuais e spot (1 = igual ao da Unity a 40% do alcance original; 2 = calibrado contra fotos de rua à noite)");
+            LightingStreetlightKelvin = l.CreateEntry("streetlight_kelvin", 4500f, "Cor dos postes do mapa em kelvin (4000 a 5000 = LED; 2000 = sódio laranja; 0 = cor original do mapa)");
+            LightingShadowedStreetlights = l.CreateEntry("shadowed_streetlights", 2, "Quantos postes perto da câmera projetam sombra (cada um custa um mapa de sombra cúbico)");
+        }
+
         static void CreateRainEntries()
         {
             var e = MelonPreferences.CreateCategory("Rain_Environment", "BetterGraphics: ambiente de chuva");
@@ -334,7 +352,9 @@ namespace BetterGraphics
         // Para o Lab: muda uma preferência pelo nome.
         internal static bool Definir(string nome, string valor)
         {
-            var e = Cat.GetEntry(nome);
+            // "Seção.chave" muda uma preferência de outra seção (ex.: Lighting.light_range_multiplier).
+            int ponto = nome.IndexOf('.');
+            var e = ponto > 0 ? MelonPreferences.GetCategory(nome.Substring(0, ponto))?.GetEntry(nome.Substring(ponto + 1)) : Cat.GetEntry(nome);
             if (e == null) return false;
             var inv = System.Globalization.CultureInfo.InvariantCulture;
             switch (e)
