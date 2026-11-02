@@ -210,6 +210,7 @@ namespace BetterGraphics
                 case "interior": Resp(Interior.Estado()); return;
                 case "molhado": Resp(Molhado.Estado()); return;
                 case "gotas": Resp(WindshieldRain.Estado()); return;
+                case "chuva": Resp(Chuva.Estado()); return;
                 case "gotasdebug": Resp(WindshieldRain.Debug(p[1] == "1")); return;
                 case "pelicula": Resp(WindshieldRain.SaveFilm(Path.Combine(_prints, "pelicula.png"))); return; // película do para-brisa com as palhetas em vermelho
                 case "limpador": PBSLoaderCommonUtils.Veiculos.Comandos.Limpadores(); Resp("ok limpador"); return;              // liga/desliga a chave do limpador

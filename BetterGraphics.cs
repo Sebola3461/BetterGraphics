@@ -3,7 +3,7 @@ using MelonLoader;
 using PBSLoaderCommonUtils;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(BetterGraphics.BetterGraphicsMod), "BetterGraphics", "1.4.0", "nzrn")]
+[assembly: MelonInfo(typeof(BetterGraphics.BetterGraphicsMod), "BetterGraphics", "1.5.0", "nzrn")]
 [assembly: MelonGame(null, "Proton Bus Simulator")]
 
 namespace BetterGraphics
@@ -47,6 +47,7 @@ namespace BetterGraphics
             Interior.CenaMudou();
             Molhado.CenaMudou();
             WindshieldRain.CenaMudou();
+            RainFall.CenaMudou();
         }
 
         public override void OnUpdate()
@@ -83,6 +84,7 @@ namespace BetterGraphics
             if (Cfg.Ativo.Value) Seguro(Interior.Quadro, "InteriorQuadro");
             if (Cfg.Ativo.Value) Seguro(Molhado.Quadro, "MolhadoQuadro");
             if (Cfg.Ativo.Value) Seguro(WindshieldRain.Quadro, "ChuvaVidroQuadro");
+            if (Cfg.Ativo.Value) Seguro(RainFall.Quadro, "ChuvaGPU"); else RainFall.CenaMudou();
             if (Cfg.Ativo.Value) Seguro(() => Luz.Aplicar(null), "LuzQuadro"); // reforço caso o patch no Enviro não rode
         }
 
@@ -167,7 +169,7 @@ namespace BetterGraphics
         internal static MelonPreferences_Entry<float> SombraDistancia, AmbienteForca, AmbCeu, AmbHorizonte, AmbChao, SolForca, SombraForca,
             Exposicao, ExposicaoMin, ExposicaoMax, Contraste, Saturacao, Temperatura, Bloom, BloomLimiar, AOIntensidade,
             SondaIntervalo, BrilhoMax, VidroReflexo, VidroReflexoPerto, VidroReflexoDentro, VidroVeu, VidroVeuPerto, VidroTom,
-            VolumetricaForca, RaiosSolForca, MapaBrilho, ChaoSeco, ChaoMolhado, CurvaPe, CurvaOmbro, ChaoEscurecer, ChuvaExposicao, CabineExposicao, CabineAmbiente, CabineMedicao, ChuvaNeblina, ChaoBaseUmida, ChuvaPneus, ChuvaPocas, ChuvaRespingoChao, ChuvaSarjeta, ChuvaDensidade, ChuvaPingos,
+            VolumetricaForca, RaiosSolForca, MapaBrilho, ChaoSeco, ChaoMolhado, CurvaPe, CurvaOmbro, ChaoEscurecer, ChuvaExposicao, CabineExposicao, CabineAmbiente, CabineMedicao, ChuvaNeblina, ChaoBaseUmida, ChuvaPneus, ChuvaPocas, ChuvaSarjeta,
             Neblina, CeuOclusaoMin, CeuOclusaoAlcance, LatariaBrilho, LatariaVerniz, CurvaPeAlcance, CurvaOmbroAlcance, CurvaOmbroAngulo, CabinePe, DofAbertura, DofFocal, ChuvaFrio, JanelaRebate, JanelaForca;
 
         internal static void Criar()
@@ -193,10 +195,7 @@ namespace BetterGraphics
             ChuvaPneus = c.CreateEntry("ChuvaPneus", 1.0f, "Quantidade de spray/névoa levantada pelos pneus no molhado");
             ChuvaPocas = c.CreateEntry("ChuvaPocas", 1.0f, "Força do splash ao passar numa poça");
             ChuvaSarjeta = c.CreateEntry("ChuvaSarjeta", 0f, "Água correndo junto ao meio-fio na chuva (desativada; acima de 0 liga)");
-            ChuvaDensidade = c.CreateEntry("ChuvaDensidade", 1.0f, "Chuva do mod (gotas caindo em volta da câmera, além das do Enviro). 0 desliga");
-            ChuvaPingos = c.CreateEntry("ChuvaPingos", 1.0f, "Respingos das gotas batendo no chão em volta da câmera");
             ChuvaEmissoesQuadro = c.CreateEntry("ChuvaEmissoesQuadro", 140, "Máximo de partículas criadas por quadro pelos efeitos de chuva (desempenho)");
-            ChuvaRespingoChao = c.CreateEntry("ChuvaRespingoChao", 0.3f, "Opacidade mínima do respingo das gotas no chão (o Enviro usa 0.08, quase invisível)");
             ChaoEscurecer = c.CreateEntry("ChaoEscurecerMolhado", 0.65f, "Cor do chão encharcado em relação ao seco");
             ChuvaExposicao = c.CreateEntry("ChuvaExposicao", -0.35f, "Exposição a mais (EV) com chuva forte de dia (some à noite)");
             ChuvaNeblina = c.CreateEntry("ChuvaNeblina", 0.001f, "Névoa com chuva forte (cortina d'água; 0.001 = ~1,5 km de visibilidade)");
@@ -293,7 +292,9 @@ namespace BetterGraphics
             CreateRainEntries();
         }
 
-        internal static MelonPreferences_Entry<bool> RainGlassEnabled, WiperActive;
+        internal static MelonPreferences_Entry<bool> RainGlassEnabled, WiperActive, RainFallEnabled, RainCollision;
+        internal static MelonPreferences_Entry<float[]> RainWindVelocity;
+        internal static MelonPreferences_Entry<float> RainIntensity, RainGlobalWetness, RainAirHumidity, RainParticleDensity, RainTerminalVelocity, RainMotionBlurStretch;
         internal static MelonPreferences_Entry<int[]> RainGridResolution;
         internal static MelonPreferences_Entry<float> RainEvaporation, RainGravityWeight, RainWindWeight, RainContactAngle, RainRoughnessWet, RainIor,
             WiperSweepSpeed, WiperMinAngle, WiperMaxAngle, WiperBladeWidth, WiperAccumulation;
@@ -301,6 +302,17 @@ namespace BetterGraphics
         // Seções e chaves com os nomes do schema RainSystemConfig (uma seção por bloco).
         static void CreateRainEntries()
         {
+            var e = MelonPreferences.CreateCategory("Rain_Environment", "BetterGraphics: ambiente de chuva");
+            RainIntensity = e.CreateEntry("rain_intensity", 0.85f, "Multiplica a intensidade da chuva do clima do jogo (1 = a do clima)");
+            RainWindVelocity = e.CreateEntry("wind_velocity", new[] { 2.5f, -9.8f, 4.1f }, "Vento base (m/s) em x e z, multiplicado pela força do vento do clima e com rajadas; a queda vem de terminal_velocity (y não é usado)");
+            RainGlobalWetness = e.CreateEntry("global_wetness", 0.9f, "Quanto as superfícies expostas molham (multiplica a umidade do chão)");
+            RainAirHumidity = e.CreateEntry("air_humidity", 0.95f, "Umidade do ar: névoa e luz volumétrica mais densas na chuva");
+            var f = MelonPreferences.CreateCategory("Rain_FallingDrops", "BetterGraphics: gotas caindo");
+            RainFallEnabled = f.CreateEntry("enabled", true, "Chuva calculada na GPU com respingos (troca a chuva do Enviro)");
+            RainParticleDensity = f.CreateEntry("particle_density", 5000f, "Gotas desenhadas por 1000 m³ de ar em volta da câmera, na chuva mais forte");
+            RainTerminalVelocity = f.CreateEntry("terminal_velocity", 12f, "Velocidade de queda (m/s)");
+            RainMotionBlurStretch = f.CreateEntry("motion_blur_stretch", 2.5f, "Comprimento do risco de cada gota (borrão de movimento)");
+            RainCollision = f.CreateEntry("collision_with_objects", true, "A gota para em telhados, marquises e no ônibus (mapa de abrigo); respingos só onde a chuva bate");
             var g = MelonPreferences.CreateCategory("Rain_WindshieldGrid", "BetterGraphics: água nos vidros do ônibus");
             RainGlassEnabled = g.CreateEntry("enabled", true, "Gotas simuladas no para-brisa, película de água e gotas nas janelas (troca as manchas paradas do jogo)");
             RainGridResolution = g.CreateEntry("texture_resolution", new[] { 256, 256 }, "Células da grade da película no para-brisa (largura, altura)");

@@ -11,7 +11,7 @@ namespace BetterGraphics
     //    pneu) solta uma lâmina de água para os lados.
     //  - Sarjeta: varredura com raios em volta da câmera acha onde o asfalto encosta no meio-fio; ali
     //    corre água rente ao chão, no sentido da descida da rua.
-    //  - Respingo das gotas no chão (do Enviro) mais visível.
+    //  A chuva caindo e os respingos das gotas são do RainFall (GPU).
     // Tudo depende da intensidade da chuva do clima atual: com tempo seco nada é emitido.
     internal static class Chuva
     {
@@ -35,7 +35,7 @@ namespace BetterGraphics
             _nat.Clear(); _natOcultos = false; _proxNat = 0f;
             _sarjetas.Clear(); _centroVarredura = new Vector3(1e9f, 0, 0); _varrendo = false;
             if (_go != null) UnityEngine.Object.Destroy(_go);
-            _fluxos.Clear(); _sarjetasPostas = -1; _go = null; _nevoa = _gotas = _lamina = _correnteza = _pingos = null; Array.Clear(_perto, 0, 4); Array.Clear(_longe, 0, 4); _alturaPronta = null; _modNevoa = null;
+            _fluxos.Clear(); _sarjetasPostas = -1; _go = null; _nevoa = _gotas = _lamina = _correnteza = null; _alturaPronta = null; _modNevoa = null;
         }
 
         // Intensidade da chuva agora (0 a 1): o clima atual, não a umidade do chão (que demora a secar).
@@ -57,12 +57,11 @@ namespace BetterGraphics
 
         internal static void Quadro()
         {
-            // A chuva nativa (RainMaker/Enviro) segue a câmera sem colidir com o teto: com a câmera
-            // dentro, as gotas atravessam o telhado e chovem no salão. Os renderers dos sistemas
-            // nativos de chuva ficam escondidos enquanto a câmera estiver dentro; pelas janelas
-            // aparece a chuva densa do mod, que já tem o buraco no tamanho da carroceria.
+            // A chuva nativa (RainMaker/Enviro) segue a câmera sem colidir com nada: atravessa o teto do ônibus e
+            // as marquises. Fica escondida (gotas e respingos) enquanto a chuva da GPU (RainFall) estiver ativa;
+            // sem ela, só com a câmera dentro do ônibus.
             var cam0 = Pos.Cam;
-            NativaChuva(cam0 != null && Veiculo.Dentro(cam0.transform.position));
+            NativaChuva(RainFall.Active || (cam0 != null && Veiculo.Dentro(cam0.transform.position)));
             _orcamento = Cfg.ChuvaEmissoesQuadro.Value;
             if (!Cfg.ChuvaEfeitos.Value) { if (_go != null) CenaMudou(); return; }
             float chuva = Intensidade();
@@ -81,9 +80,6 @@ namespace BetterGraphics
             Pneus(molhado);
             Grade();
             Sarjetas(chuva, molhado);
-            RespingoDoEnviro(chuva);
-            ChuvaDensa(chuva);
-            Pingos(chuva);
         }
 
         // ---------------- materiais (cópias dos do jogo: névoa de pneu, gota esticada, respingo)
@@ -227,7 +223,7 @@ namespace BetterGraphics
             _natOcultos = dentro;
             foreach (var r in _nat)
                 try { if (r != null && !r.WasCollected) r.enabled = !dentro; } catch { }
-            if (dentro) Log.Msg("Chuva nativa escondida (câmera dentro do ônibus)");
+            if (dentro) Log.Msg("Chuva nativa escondida");
         }
 
         // ---------------- pneus
@@ -354,7 +350,7 @@ namespace BetterGraphics
         // (raios por quadro) e refeita quando a câmera anda 12 m.
         static void Grade()
         {
-            if (Cfg.ChuvaSarjeta.Value <= 0f && Cfg.ChuvaPingos.Value <= 0f) return;
+            if (Cfg.ChuvaSarjeta.Value <= 0f) return;
             var cam = Pos.Cam;
             if (cam == null) return;
             var p = cam.transform.position;
@@ -496,223 +492,6 @@ namespace BetterGraphics
 
         static ParticleSystem _correnteza;
 
-        // ---------------- gotas do Enviro batendo no chão
-
-        static float _proxEnviro;
-        static readonly Dictionary<IntPtr, Color> _splashOrig = new();
-
-        static void RespingoDoEnviro(float chuva)
-        {
-            if (Time.unscaledTime < _proxEnviro) return;
-            _proxEnviro = Time.unscaledTime + 3f;
-            foreach (var r in UnityEngine.Object.FindObjectsOfType<ParticleSystemRenderer>())
-            {
-                var m = r.sharedMaterial;
-                if (m == null || !m.name.StartsWith("EnviroRainSplash", StringComparison.Ordinal) || !m.HasProperty("_TintColor")) continue;
-                if (!_splashOrig.ContainsKey(m.Pointer)) _splashOrig[m.Pointer] = m.GetColor("_TintColor");
-                var o = _splashOrig[m.Pointer];
-                m.SetColor("_TintColor", new Color(o.r, o.g, o.b, Mathf.Max(o.a, Cfg.ChuvaRespingoChao.Value)));
-            }
-        }
-
-        // ---------------- chuva densa (do mod)
-
-        // A chuva do Enviro é rala: poucas gotas finas e quase transparentes. Duas camadas próprias, com
-        // emissão nativa (sem custo de CPU por gota): perto, riscos finos e muitos; longe, riscos maiores e
-        // mais espaçados, para a chuva ter profundidade até a névoa. Gotas a ~9 m/s (velocidade final de gota
-        // grande), inclinadas pelo vento.
-        // Não chove dentro do ônibus: cada camada são quatro blocos (esquerda, direita, frente, trás) alinhados
-        // ao ônibus, cobrindo a área em volta menos a projeção dele no chão. Colisão de partícula não serve:
-        // a barata não acompanha colisor em movimento e a exata com dezenas de milhares de gotas trava o jogo.
-        // Com a câmera longe do ônibus os blocos viram uma área contínua em volta dela.
-        static readonly ParticleSystem[] _perto = new ParticleSystem[4], _longe = new ParticleSystem[4];
-        static ParticleSystem _pingos;
-        static Material _matChuva, _matChuvaLonge, _matPingo;
-        const float AlturaPerto = 12f, AlturaLonge = 16f, LadoPerto = 28f, LadoLonge = 110f;
-        const float DensPerto = 28f, DensLonge = 0.75f; // gotas por segundo por m² de chão (temporal)
-
-        static ParticleSystem Bloco(string nome, Material mat, int max, float altura, float tamMin, float tamMax, float esticar)
-        {
-            var go = new GameObject(nome);
-            go.transform.SetParent(_go.transform, false);
-            var ps = go.AddComponent<ParticleSystem>();
-            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-            float vida = (altura + 4f) / 9f;
-            Particulas.Emissor(ps, max, new Vector3(1f, 1f, 0.2f), 8f, 10f, tamMin, tamMax, vida * 0.9f, vida * 1.1f);
-            Particulas.Taxa(ps, 0f);
-            var r = go.GetComponent<ParticleSystemRenderer>();
-            r.sharedMaterial = mat;
-            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            r.receiveShadows = false;
-            r.renderMode = ParticleSystemRenderMode.Stretch; r.velocityScale = esticar; r.lengthScale = 1f;
-            r.maxParticleSize = 0.004f; // gota rente à lente não vira uma barra branca na tela
-            ps.Play();
-            return ps;
-        }
-
-        static Material MaterialChuva(float alfa)
-        {
-            var m = new Material(_matFio) { name = "BetterGraphics_Chuva" };
-            var c = new Color(0.82f, 0.85f, 0.88f, alfa);
-            if (m.HasProperty("_TintColor")) m.SetColor("_TintColor", c); else m.color = c;
-            m.hideFlags = HideFlags.DontUnloadUnusedAsset;
-            return m;
-        }
-
-        // Respingo de gota: ponto claro com coroa (anel) suave.
-        static Material MaterialPingo()
-        {
-            const int N = 32;
-            var t = new Texture2D(N, N, TextureFormat.RGBA32, false, true) { name = "BetterGraphics_Pingo", wrapMode = TextureWrapMode.Clamp };
-            var px = new Color32[N * N];
-            for (int y = 0; y < N; y++)
-                for (int x = 0; x < N; x++)
-                {
-                    float dx = (x - 15.5f) / 15.5f, dy = (y - 15.5f) / 15.5f, r = Mathf.Sqrt(dx * dx + dy * dy);
-                    float a = Mathf.Exp(-r * r * 18f) * 0.9f + Mathf.Exp(-(r - 0.6f) * (r - 0.6f) * 60f) * 0.55f;
-                    px[y * N + x] = new Color32(255, 255, 255, (byte)(255 * Mathf.Clamp01(a)));
-                }
-            t.SetPixels32(px); t.Apply(false, false);
-            t.hideFlags = HideFlags.DontUnloadUnusedAsset;
-            var m = new Material(_matFio) { name = "BetterGraphics_PingoMat", mainTexture = t };
-            var c = new Color(0.85f, 0.88f, 0.9f, 0.55f);
-            if (m.HasProperty("_TintColor")) m.SetColor("_TintColor", c); else m.color = c;
-            m.hideFlags = HideFlags.DontUnloadUnusedAsset;
-            return m;
-        }
-
-        // Quatro blocos numa área quadrada de lado L em volta de "centro" (eixos dir/frente), menos o retângulo
-        // de meia-largura hx e meia-comprimento hz (o ônibus; zero quando não há buraco).
-        static void Blocos(ParticleSystem[] b, Vector3 centro, Vector3 dir, Vector3 frente, float L, float hx, float hz, float altura, Vector3 deriva, Quaternion rot, float dens)
-        {
-            float h = L * 0.5f;
-            hx = Mathf.Min(hx, h - 0.5f); hz = Mathf.Min(hz, h - 0.5f);
-            // (centro x, centro z, largura x, comprimento z) de cada bloco, no espaço dir/frente
-            var p = new Vector4[]
-            {
-                new(-(h + hx) * 0.5f, 0f, h - hx, L),        // esquerda (o comprimento todo)
-                new((h + hx) * 0.5f, 0f, h - hx, L),         // direita
-                new(0f, (h + hz) * 0.5f, 2f * hx, h - hz),   // frente (entre os laterais)
-                new(0f, -(h + hz) * 0.5f, 2f * hx, h - hz),  // trás
-            };
-            for (int i = 0; i < 4; i++)
-            {
-                var ps = b[i];
-                float area = Mathf.Max(0f, p[i].z) * Mathf.Max(0f, p[i].w);
-                var pos = centro + dir * p[i].x + frente * p[i].y + Vector3.up * altura - deriva;
-                ps.transform.SetPositionAndRotation(pos, rot);
-                // O box da forma fica no espaço local (x = direita, y = frente quando a gota cai para baixo).
-                Particulas.Caixa(ps, new Vector3(Mathf.Max(0.01f, p[i].z), Mathf.Max(0.01f, p[i].w), 0.2f));
-                Particulas.Taxa(ps, area * dens);
-            }
-        }
-
-        static float _proxBlocos;
-
-        static void ChuvaDensa(float chuva)
-        {
-            if (Cfg.ChuvaDensidade.Value <= 0f)
-            {
-                if (_perto[0] != null) for (int i = 0; i < 4; i++) { Particulas.Taxa(_perto[i], 0f); Particulas.Taxa(_longe[i], 0f); }
-                return;
-            }
-            var cam = Pos.Cam;
-            if (cam == null) return;
-            if (_perto[0] == null)
-            {
-                _matChuva ??= MaterialChuva(0.32f);
-                _matChuvaLonge ??= MaterialChuva(0.16f);
-                for (int i = 0; i < 4; i++)
-                {
-                    _perto[i] = Bloco("BetterGraphics_ChuvaPerto" + i, _matChuva, 16000, AlturaPerto, 0.006f, 0.011f, 0.035f);
-                    _longe[i] = Bloco("BetterGraphics_ChuvaLonge" + i, _matChuvaLonge, 9000, AlturaLonge, 0.03f, 0.05f, 0.03f);
-                }
-            }
-            // Vento do clima inclina a chuva (até ~25° com vento forte), com a direção girando e a força
-            // em rajadas: soma de senos, suave e barata (nada de Random por quadro).
-            float vento = 0.25f;
-            try { vento = Mathf.Clamp01(Luz.Sky.Weather.currentActiveWeatherPreset.WindStrenght); } catch { }
-            float t = Time.time;
-            float rajada = 1f + 0.3f * (Mathf.Sin(t * 0.31f) * 0.6f + Mathf.Sin(t * 0.73f + 1.7f) * 0.4f);
-            float giro = 40f * Mathf.Sin(t * 0.11f + 2f);
-            var dirVento = Quaternion.AngleAxis(giro, Vector3.up) * new Vector3(0.8f, 0f, 0.6f);
-            float inclinacao = vento * 0.45f * rajada;
-            var queda = (Vector3.down + dirVento * inclinacao).normalized;
-
-            var c = cam.transform.position;
-            var bus = Veiculo.Raiz();
-            Vector3 centro = c, dir = Vector3.right, frente = Vector3.forward; float hx = 0f, hz = 0f;
-            if (bus != null && Veiculo.Distancia(c) < LadoPerto * 0.4f)
-            {
-                // Perto do ônibus: área alinhada a ele, com o buraco do tamanho da carroceria (+ folga para a
-                // inclinação do vento entre o teto e o chão).
-                var cx = Veiculo.Caixa;
-                frente = Vector3.ProjectOnPlane(bus.forward, Vector3.up).normalized;
-                dir = Vector3.Cross(Vector3.up, frente);
-                centro = bus.TransformPoint(cx.center);
-                centro.y = c.y;
-                float folga = 0.3f + inclinacao * cx.size.y;
-                hx = cx.extents.x * 0.62f + folga; // a caixa inclui os retrovisores; a carroceria é ~62% dela
-                hz = cx.extents.z + folga;
-            }
-            var rot = Quaternion.LookRotation(queda, frente);
-            float k = chuva * chuva * Cfg.ChuvaDensidade.Value; // garoa rala, temporal denso
-            // A gota cai inclinada: o emissor fica deslocado contra o vento para ela chegar no lugar certo.
-            Blocos(_perto, centro, dir, frente, LadoPerto, hx, hz, AlturaPerto, dirVento * (inclinacao * AlturaPerto), rot, DensPerto * k);
-            Blocos(_longe, centro, dir, frente, LadoLonge, hx, hz, AlturaLonge, dirVento * (inclinacao * AlturaLonge), rot, DensLonge * k);
-        }
-
-        // Respingos das gotas no chão, em volta da câmera, na superfície de cima de cada ponto da grade
-        // (telhados e marquises recebem; embaixo deles não pinga).
-        static float _acumPingo;
-
-        static void Pingos(float chuva)
-        {
-            if (Cfg.ChuvaPingos.Value <= 0f || _alturaPronta == null) return;
-            var cam = Pos.Cam;
-            if (cam == null) return;
-            if (_pingos == null)
-            {
-                _matPingo ??= MaterialPingo();
-                var go = new GameObject("BetterGraphics_Pingos");
-                go.transform.SetParent(_go.transform, false);
-                _pingos = go.AddComponent<ParticleSystem>();
-                _pingos.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-                Particulas.Configurar(_pingos, 3000, 1f);
-                var r = go.GetComponent<ParticleSystemRenderer>();
-                r.sharedMaterial = _matPingo; r.renderMode = ParticleSystemRenderMode.Billboard;
-                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; r.receiveShadows = false;
-                _pingos.Play();
-            }
-            _acumPingo += Time.deltaTime * chuva * chuva * Cfg.ChuvaPingos.Value * 1600f;
-            var c = cam.transform.position;
-            int tentativas = 0;
-            while (_acumPingo >= 1f && tentativas++ < 200)
-            {
-                _acumPingo -= 1f;
-                // Mais denso perto da câmera (é onde dá para ver cada respingo).
-                var ang = UnityEngine.Random.Range(0f, Mathf.PI * 2f);
-                float dist = Mathf.Lerp(0.8f, 18f, UnityEngine.Random.value * UnityEngine.Random.value);
-                float x = c.x + Mathf.Cos(ang) * dist, z = c.z + Mathf.Sin(ang) * dist;
-                int i = Mathf.RoundToInt((x - _origemPronta.x) / Passo), j = Mathf.RoundToInt((z - _origemPronta.z) / Passo);
-                if (i < 0 || j < 0 || i >= G || j >= G) continue;
-                float h = _alturaPronta[i, j];
-                if (h < -1e8f) continue;
-                if (Veiculo.Dentro(new Vector3(x, h + 0.5f, z))) continue;   // embaixo da carroceria não tem respingo
-                if (!Gastar()) break;
-                var ep = new ParticleSystem.EmitParams
-                {
-                    position = new Vector3(x, h + 0.03f, z),
-                    velocity = new Vector3(UnityEngine.Random.Range(-0.3f, 0.3f), UnityEngine.Random.Range(0.6f, 1.4f), UnityEngine.Random.Range(-0.3f, 0.3f)),
-                    startSize = UnityEngine.Random.Range(0.04f, 0.1f),
-                    startLifetime = UnityEngine.Random.Range(0.1f, 0.22f),
-                    startColor = new Color(1f, 1f, 1f, UnityEngine.Random.Range(0.4f, 0.9f)),
-                    rotation = UnityEngine.Random.Range(0f, 360f),
-                };
-                _pingos.Emit(ep, 1);
-            }
-            if (_acumPingo > 50f) _acumPingo = 50f;
-        }
 
         internal static bool SarjetaN(int n, out Vector3 p, out Vector3 fluxo, out Vector3 paraCalcada)
         {
@@ -723,8 +502,6 @@ namespace BetterGraphics
             return true;
         }
 
-        static int Contar(ParticleSystem[] b) { int n = 0; foreach (var x in b) if (x != null) n += x.particleCount; return n; }
-
-        internal static string Estado() => $"chuva: intensidade {Intensidade():0.00}, rodas {_rodas.Count}, névoa {(_nevoa != null ? _nevoa.particleCount : 0)}, gotas {(_gotas != null ? _gotas.particleCount : 0)}, lâmina {(_lamina != null ? _lamina.particleCount : 0)}, sarjetas {_sarjetas.Count}/{_fluxos.Count}, chuva {Contar(_perto)}+{Contar(_longe)}, pingos {(_pingos != null ? _pingos.particleCount : 0)}";
+        internal static string Estado() => $"chuva: intensidade {Intensidade():0.00}, rodas {_rodas.Count}, névoa {(_nevoa != null ? _nevoa.particleCount : 0)}, gotas {(_gotas != null ? _gotas.particleCount : 0)}, lâmina {(_lamina != null ? _lamina.particleCount : 0)}, sarjetas {_sarjetas.Count}/{_fluxos.Count} | {RainFall.Estado()}";
     }
 }

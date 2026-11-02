@@ -95,7 +95,7 @@ namespace BetterGraphics
             var cam = _camCb;
             var vp = GL.GetGPUProjectionMatrix(cam.projectionMatrix, true) * cam.worldToCameraMatrix;
             _mat.SetMatrix("_BG_InvVP", vp.inverse);
-            _mat.SetFloat("_BG_Umidade", Mathf.Sqrt(Chao.Umidade)); // escurece e brilha logo que começa a chover
+            _mat.SetFloat("_BG_Umidade", Mathf.Sqrt(Chao.Umidade * Mathf.Clamp01(Cfg.RainGlobalWetness.Value))); // escurece e brilha logo que começa a chover
             _mat.SetFloat("_BG_Chuva", Chuva.Intensidade());
             _mat.SetFloat("_BG_Debug", _debug);
             bool temOnibus = Interior.Grade(out var grade);
@@ -170,8 +170,11 @@ namespace BetterGraphics
                 _mapa.Create();
                 _matAltura = new Material(_altura) { hideFlags = HideFlags.DontUnloadUnusedAsset };
                 _cbMapa = new CommandBuffer { name = "BetterGraphics Abrigo" };
-                _mat.SetTexture("_BG_Altura", _mapa);
             }
+            if (_mat != null && _mat.GetTexture("_BG_Altura") != _mapa) _mat.SetTexture("_BG_Altura", _mapa);
+            // A chuva caindo (RainFall) também usa o mapa: um desenho por quadro basta.
+            if (_abrigoQuadro == Time.frameCount) { Area(); return; }
+            _abrigoQuadro = Time.frameCount;
             var swl = System.Diagnostics.Stopwatch.StartNew();
             Listar(cam.cullingMask);
             Lab.Tempo("MolhadoLista", swl.Elapsed.TotalMilliseconds);
@@ -206,7 +209,24 @@ namespace BetterGraphics
             Area();
         }
 
-        static void Area() => _mat.SetVector("_BG_AlturaArea", new Vector4(_centroMapa.x, _centroMapa.y, 1f / Lado, _mapaPronto ? 1f : 0f));
+        static int _abrigoQuadro = -1;
+
+        static Vector4 AreaAtual => new(_centroMapa.x, _centroMapa.y, 1f / Lado, _mapaPronto ? 1f : 0f);
+
+        static void Area() { if (_mat != null) _mat.SetVector("_BG_AlturaArea", AreaAtual); }
+
+        // Mapa de abrigo para outros módulos (a chuva caindo para nele), mesmo com o chão ainda seco e o passe de
+        // umidade desligado. "area": x, z do centro, 1/lado, 1 se pronto.
+        internal static bool Abrigo(Camera cam, out Texture mapa, out Vector4 area)
+        {
+            mapa = null; area = Vector4.zero;
+            if (cam == null) return false;
+            _altura ??= Pacote.Shader("Altura");
+            if (_altura == null) return false;
+            Abrigo(cam);
+            mapa = _mapa; area = AreaAtual;
+            return _mapaPronto;
+        }
 
         // 1 = molhado (vermelho) e exposto (verde); 2 = albedo vermelho direto no G-buffer.
         internal static string Debug(int v) { _debug = v; return "molhado debug " + v; }

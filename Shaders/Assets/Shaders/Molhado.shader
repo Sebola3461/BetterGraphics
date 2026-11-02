@@ -160,7 +160,8 @@ Shader "Hidden/BetterGraphics/Molhado"
                 float3 albedoNovo = albedo * lerp(1.0, lerp(0.88, 0.45, poroso), m);
                 albedoNovo *= lerp(1.0, 0.75, poca);
                 // Smoothness e F0: filme d'água liso por cima; poça vira espelho.
-                float lisoNovo = lerp(liso, max(liso, lerp(0.82, 0.9, plano)), m);
+                // Plano: a película d'água chega a roughness 0,05; na parede a água escorre e fica mais áspera.
+                float lisoNovo = lerp(liso, max(liso, lerp(0.82, 0.95, plano)), m);
                 lisoNovo = lerp(lisoNovo, 0.97, poca);
                 float3 f0Novo = lerp(f0, max(f0, 0.02), max(m, poca));
 
