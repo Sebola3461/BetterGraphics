@@ -30,6 +30,8 @@ namespace BetterGraphics
         static bool _noGlassShader;
         static readonly Dictionary<IntPtr, Material> _glassClone = new();     // vidro do jogo -> VehicleGlass
         static readonly Dictionary<IntPtr, Material> _glassOriginal = new();  // VehicleGlass -> vidro do jogo
+        static readonly Dictionary<IntPtr, bool> _glassFront = new();         // renderer -> vidro de frente/trás
+        static float _appliedSideT = -1f, _appliedFrontT = -1f;
 
         static Material GlassClone(Material game)
         {
@@ -65,10 +67,27 @@ namespace BetterGraphics
                 if (_glassShader == null) { _noGlassShader = true; return false; }
             }
             r.sharedMaterials = new[] { GlassClone(vidro) };
-            var block = new MaterialPropertyBlock();
-            block.SetFloat("_BG_GlassT", FacesFrontOrBack(r) ? Cfg.LightingGlassFrontTransmission.Value : Cfg.LightingGlassSideTransmission.Value);
-            r.SetPropertyBlock(block);
+            bool front = FacesFrontOrBack(r);
+            _glassFront[r.Pointer] = front;
+            ApplyTransmission(r, front);
             return true;
+        }
+
+        static void ApplyTransmission(Renderer r, bool front)
+        {
+            var block = new MaterialPropertyBlock();
+            block.SetFloat("_BG_GlassT", front ? Cfg.LightingGlassFrontTransmission.Value : Cfg.LightingGlassSideTransmission.Value);
+            r.SetPropertyBlock(block);
+        }
+
+        // A transmissão vai no bloco de cada renderer; mudar a preferência no menu tem de chegar aos vidros já trocados.
+        static void RefreshTransmission()
+        {
+            float side = Cfg.LightingGlassSideTransmission.Value, front = Cfg.LightingGlassFrontTransmission.Value;
+            if (side == _appliedSideT && front == _appliedFrontT) return;
+            _appliedSideT = side; _appliedFrontT = front;
+            foreach (var kv in _glassFront)
+                if (_renderers.TryGetValue(kv.Key, out var r) && r != null) ApplyTransmission(r, kv.Value);
         }
 
         internal static void Manter()
@@ -181,6 +200,7 @@ namespace BetterGraphics
             Shader.SetGlobalFloat("_BG_GlassReflect", dentro ? Mathf.Clamp01(Cfg.LightingGlassInsideReflection.Value) : 1f);
             Shader.SetGlobalFloat("_BG_GlassCamInside", dentro ? 1f : 0f);
             Shader.SetGlobalFloat("_BG_GlassInsideT", Mathf.Clamp01(Cfg.LightingGlassInsideTransmission.Value));
+            RefreshTransmission();
             float aSeco = R(1f - (1f - a) * t);
             foreach (var v in _veus.Values) if (v != null) Cor(v, "_Color", new Color(0f, 0f, 0f, _veusSecos.Contains(v.Pointer) ? aSeco : a));
             if (_camada != null)
@@ -235,7 +255,7 @@ namespace BetterGraphics
                 }
                 catch { }
             }
-            _renderers.Clear(); _vidros.Clear(); _sombraOrig.Clear(); _semModelo.Clear();
+            _renderers.Clear(); _glassFront.Clear(); _vidros.Clear(); _sombraOrig.Clear(); _semModelo.Clear();
             CenaMudou();
         }
 

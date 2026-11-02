@@ -34,6 +34,7 @@ Shader "BetterGraphics/VehicleGlass"
             float _BG_GlassInsideT;          // transmissão mínima com a câmera dentro do veículo (o fumê quase some)
             float _BG_GlassCamInside;
             float _BG_GlassReflect;          // escala do reflexo (1 = físico)
+            float _BG_GlassDebug;            // lab: 1 = só a sonda, sem Fresnel nem fundo
 
             struct v2f
             {
@@ -79,6 +80,7 @@ Shader "BetterGraphics/VehicleGlass"
                 if (_BG_GlassCamInside > 0.5) T = max(T, _BG_GlassInsideT);
                 T *= dot(_Color.rgb, float3(0.333, 0.333, 0.333));
 
+                if (_BG_GlassDebug > 0.5) return float4(env, 0.0);
                 float3 rgb = (env + _LightColor0.rgb * sun) * Rpane * _BG_GlassReflect;
                 return float4(rgb, (1.0 - Rpane) * T);
             }

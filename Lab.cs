@@ -213,6 +213,7 @@ namespace BetterGraphics
                 case "chuva": Resp(Chuva.Estado()); return;
                 case "deferred": Resp(DeferredLighting.Estado()); return;
                 case "vidros": Resp(Vidros.Estado()); return;
+                case "vidrodebug": Shader.SetGlobalFloat("_BG_GlassDebug", F(p[1])); Resp("ok " + l); return; // 1 = vidro mostra só a sonda de reflexo
                 case "refldebug": Resp(DeferredLighting.ReflDebug(int.Parse(p[1]))); return;  // verde = oclusão especular nas sondas com caixa; vermelho = céu visível no reflexo do céu
                 case "luzes": Resp(Luzes(p.Length > 1 ? int.Parse(p[1]) : 15)); return;  // luzes N: as N luzes pontuais/spot mais perto da câmera
                 case "gotasdebug": Resp(WindshieldRain.Debug(p[1] == "1")); return;
