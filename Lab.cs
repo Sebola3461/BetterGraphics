@@ -207,6 +207,9 @@ namespace BetterGraphics
                 case "mat": Resp(Materiais.Inspecionar(p[1], p.Length > 2 ? int.Parse(p[2]) : 3)); return;
                 case "olhar": Resp(Olhar(p.Length > 1 ? F(p[1]) : 0.5f, p.Length > 2 ? F(p[2]) : 0.5f)); return;
                 case "censo": Resp(Censo()); return;
+                case "interior": Resp(Interior.Estado()); return;
+                case "interiordebug": Resp(Interior.Debug(p[1] == "1")); return;
+                case "sombras": Resp(Sombras()); return; // sombras: projeção/recepção de sombra no ônibus do jogador e luzes ativas
                 case "andar": // move o ônibus do jogador para a frente a V m/s (física congelada); "andar 0" para
                     _andar = F(p[1]);
                     var busA = Veiculo.Raiz();
@@ -415,6 +418,33 @@ namespace BetterGraphics
         }
 
         // Renderers por raiz (nomes parecidos agrupados) com os materiais mais comuns.
+        static string Sombras()
+        {
+            var sb = new System.Text.StringBuilder("sombras:\n");
+            var bus = Veiculo.Raiz();
+            if (bus == null) return "sem ônibus";
+            var cont = new Dictionary<string, int>();
+            foreach (var r in bus.GetComponentsInChildren<Renderer>(false))
+            {
+                var m = r.sharedMaterial;
+                string k = $"{(m != null && m.shader != null ? m.shader.name : "-")} cast {r.shadowCastingMode} recv {r.receiveShadows} | ex. {r.name}";
+                string kk = k.Substring(0, k.IndexOf(" | ex.", StringComparison.Ordinal));
+                bool achou = false;
+                foreach (var c in cont.Keys) if (c.StartsWith(kk + " |", StringComparison.Ordinal)) { cont[c]++; achou = true; break; }
+                if (!achou) cont[k] = 1;
+            }
+            foreach (var kv in cont) sb.AppendLine($"  x{kv.Value} {kv.Key}");
+            foreach (var luz in UnityEngine.Object.FindObjectsOfType<Light>())
+            {
+                if (!luz.isActiveAndEnabled || luz.intensity <= 0f) continue;
+                float d = Pos.Cam != null ? Vector3.Distance(luz.transform.position, Pos.Cam.transform.position) : 0f;
+                if (luz.type != LightType.Directional && d > 30f) continue;
+                sb.AppendLine($"  luz {luz.name} {luz.type} int {luz.intensity:0.##} alcance {luz.range:0.#} sombra {luz.shadows} d {d:0.#} raiz {luz.transform.root.name} mask {luz.cullingMask}");
+            }
+            sb.Append($"  sombras qualidade: dist {QualitySettings.shadowDistance} cascatas {QualitySettings.shadowCascades} proj {QualitySettings.shadowProjection} res {QualitySettings.shadowResolution} shadows {QualitySettings.shadows}");
+            return sb.ToString();
+        }
+
         static string Censo()
         {
             var grupos = new Dictionary<string, Dictionary<string, int>>();

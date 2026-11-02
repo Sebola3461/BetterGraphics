@@ -3,3 +3,14 @@ obj/
 *.user
 
 notas-*.tmp.md
+
+# projeto Unity dos shaders: só as fontes vão para o git
+Shaders/Library/
+Shaders/Temp/
+Shaders/Logs/
+Shaders/UserSettings/
+Shaders/Packages/packages-lock.json
+Shaders/*.csproj
+Shaders/*.sln
+Shaders/Assets/**/*.meta
+Shaders/ProjectSettings/*.asset

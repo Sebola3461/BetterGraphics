@@ -3,7 +3,7 @@ using MelonLoader;
 using PBSLoaderCommonUtils;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(BetterGraphics.BetterGraphicsMod), "BetterGraphics", "1.1.2", "nzrn")]
+[assembly: MelonInfo(typeof(BetterGraphics.BetterGraphicsMod), "BetterGraphics", "1.2.0", "nzrn")]
 [assembly: MelonGame(null, "Proton Bus Simulator")]
 
 namespace BetterGraphics
@@ -44,6 +44,7 @@ namespace BetterGraphics
             Varredura.Reiniciar();
             Chao.CenaMudou();
             Chuva.CenaMudou();
+            Interior.CenaMudou();
         }
 
         public override void OnUpdate()
@@ -62,6 +63,7 @@ namespace BetterGraphics
                 Seguro(Reflexos.Manter, "Reflexos");
                 Seguro(GI.Manter, "GI");
                 Seguro(Vidros.Manter, "Vidros");
+                Seguro(Interior.Manter, "Interior");
             }
             Seguro(Varredura.Quadro, "Varredura");
             Seguro(Reflexos.Quadro, "Sonda");
@@ -74,6 +76,7 @@ namespace BetterGraphics
             Lab.Camera();
             if (Cfg.Ativo.Value) Seguro(Pos.Quadro, "DofQuadro");
             if (Cfg.Ativo.Value) Seguro(GI.Quadro, "GIQuadro");
+            if (Cfg.Ativo.Value) Seguro(Interior.Quadro, "InteriorQuadro");
             if (Cfg.Ativo.Value) Seguro(() => Luz.Aplicar(null), "LuzQuadro"); // reforço caso o patch no Enviro não rode
         }
 
@@ -97,6 +100,7 @@ namespace BetterGraphics
             Seguro(Materiais.Restaurar, "Materiais");
             Seguro(Chao.Restaurar, "Chao");
             Seguro(GI.Restaurar, "GI");
+            Seguro(Interior.Restaurar, "Interior");
             Seguro(Chuva.CenaMudou, "Chuva");
             Varredura.Reiniciar(); // ao religar, tudo é reaplicado
         }
@@ -145,7 +149,7 @@ namespace BetterGraphics
     {
         internal static MelonPreferences_Category Cat;
         internal static MelonPreferences_Entry<bool> Ativo, DesligarNativo, Deferred, AmbienteCeu, AutoExposicao, AO, SSR,
-            Sonda, ReflexoPintura, VidrosAtivo, Volumetrica, RaiosSol, RadiantGI, ChaoAtivo, VolumeDoJogo, CorrigirLayer, VidroSemSombra, CeuOclusao, ChaoPocas, ChuvaEfeitos, Dof;
+            Sonda, ReflexoPintura, VidrosAtivo, Volumetrica, RaiosSol, RadiantGI, ChaoAtivo, VolumeDoJogo, CorrigirLayer, VidroSemSombra, CeuOclusao, ChaoPocas, ChuvaEfeitos, Dof, SondaSalao, LuzJanela;
         internal static MelonPreferences_Entry<float> VarreduraMs, GIIntensidade, GIIntensidadeDentro, GINoite, GIAtenuacao, GIAlcance, GIMapaSombraForca;
         internal static MelonPreferences_Entry<bool> GIAtivo, GIRebater, GISondas, GIMapaSombra;
         internal static MelonPreferences_Entry<int> GIRaios, GIQualidade, ChuvaEmissoesQuadro;
@@ -156,7 +160,7 @@ namespace BetterGraphics
             Exposicao, ExposicaoMin, ExposicaoMax, Contraste, Saturacao, Temperatura, Bloom, BloomLimiar, AOIntensidade,
             SondaIntervalo, BrilhoMax, VidroReflexo, VidroReflexoPerto, VidroReflexoDentro, VidroVeu, VidroVeuPerto, VidroTom,
             VolumetricaForca, RaiosSolForca, MapaBrilho, ChaoSeco, ChaoMolhado, CurvaPe, CurvaOmbro, ChaoEscurecer, ChuvaExposicao, CabineExposicao, CabineAmbiente, CabineMedicao, ChuvaNeblina, ChaoBaseUmida, ChuvaPneus, ChuvaPocas, ChuvaRespingoChao, ChuvaSarjeta, ChuvaDensidade, ChuvaPingos,
-            Neblina, CeuOclusaoMin, CeuOclusaoAlcance, LatariaBrilho, LatariaVerniz, CurvaPeAlcance, CurvaOmbroAlcance, CurvaOmbroAngulo, CabinePe, DofAbertura, DofFocal, ChuvaFrio;
+            Neblina, CeuOclusaoMin, CeuOclusaoAlcance, LatariaBrilho, LatariaVerniz, CurvaPeAlcance, CurvaOmbroAlcance, CurvaOmbroAngulo, CabinePe, DofAbertura, DofFocal, ChuvaFrio, JanelaRebate, JanelaForca;
 
         internal static void Criar()
         {
@@ -235,6 +239,9 @@ namespace BetterGraphics
             CabineExposicao = c.CreateEntry("CabineExposicao", 0.3f, "Exposição a mais (EV) com a câmera dentro do ônibus");
             CabinePe = c.CreateEntry("CabinePe", 0.3f, "Pé da curva com a câmera dentro do ônibus (mais suave: painel visível)");
             CabineMedicao = c.CreateEntry("CabineMedicao", 60f, "Na cabine, % mais escura da tela ignorada pela adaptação (maior = expõe pelo lado de fora)");
+            LuzJanela = c.CreateEntry("LuzJanela", true, "Luz ambiente do interior vindo só pelas janelas (sem ela o salão fica chapado, iluminado como se não tivesse teto)");
+            JanelaRebate = c.CreateEntry("JanelaRebate", 0.35f, "Luz que paredes, teto e piso do interior devolvem, em relação à média de fora");
+            JanelaForca = c.CreateEntry("JanelaForca", 1f, "Quanto da luz das janelas substitui a luz de céu aberto no interior (0 a 1)");
             CabineAmbiente = c.CreateEntry("CabineAmbiente", 1.0f, "Luz ambiente dentro do ônibus (luz que entra pelos vidros e rebate)");
             Contraste = c.CreateEntry("Contraste", 0f, "-100 a 100");
             Saturacao = c.CreateEntry("Saturacao", -22f, "-100 a 100");
@@ -249,6 +256,7 @@ namespace BetterGraphics
             DofFocal = c.CreateEntry("ProfundidadeFocal", 35f, "Distância focal da lente (mm): 24 a 50 para foto, acima de 85 teleobjetiva (mais desfoque)");
 
             Sonda = c.CreateEntry("SondaReflexo", true, "Sonda de reflexo em tempo real sobre o ônibus");
+            SondaSalao = c.CreateEntry("SondaSalao", true, "Com a câmera dentro do ônibus, piso, colunas e painéis refletem o próprio interior (não o céu de cima do teto)");
             SondaResolucao = c.CreateEntry("SondaResolucao", 256, "128, 256 ou 512");
             SondaIntervalo = c.CreateEntry("SondaIntervalo", 0.5f, "Segundos entre atualizações da sonda (0.5 = cubo completo a cada meio segundo)");
             ReflexoPintura = c.CreateEntry("ReflexoPintura", true, "Liga reflexos nas pinturas dos veículos (vêm desligados)");

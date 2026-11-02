@@ -28,4 +28,11 @@
     <Reference Include="Il2CppRadiantGI"><HintPath>$(Il2CppDir)\Il2CppRadiantGI.dll</HintPath><Private>false</Private></Reference>
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Projeto Unity dos shaders: não é compilado com o mod. -->
+    <Compile Remove="Shaders\**" />
+    <None Remove="Shaders\**" />
+    <EmbeddedResource Include="Recursos/bettergraphics.shaders" LogicalName="BetterGraphics.shaders" Condition="Exists('Recursos/bettergraphics.shaders')" />
+  </ItemGroup>
+
 </Project>

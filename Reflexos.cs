@@ -89,6 +89,7 @@ namespace BetterGraphics
         // Todo frame: posição e atualização da sonda.
         internal static void Quadro()
         {
+            QuadroDentro();
             if (_sonda == null || !_go.activeSelf) return;
             var cam = Pos.Cam;
             if (Veiculo.Raiz() != null) _go.transform.position = Veiculo.AcimaDoTeto();
@@ -124,6 +125,68 @@ namespace BetterGraphics
             RestaurarPinturas();
             RestaurarLataria();
             if (_go != null) _go.SetActive(false);
+            if (_goDentro != null) _goDentro.SetActive(false);
+        }
+
+        // ---- sonda do salão ----
+        // A sonda de cima do teto faz o piso de chapa, as colunas e os painéis refletirem céu aberto, e o
+        // interior inteiro ganha o mesmo brilho azulado. Em deferred a sonda vale por pixel, pela caixa
+        // dela: uma segunda sonda com a caixa do salão faz o que está dentro refletir o próprio interior
+        // (bancos, teto, janelas claras). A caixa não gira com o ônibus (a Unity só tem caixa alinhada ao
+        // mundo), então ela só liga com a câmera dentro: de fora, numa curva, ela pegaria a lataria.
+        static GameObject _goDentro;
+        static ReflectionProbe _sondaDentro;
+        static int _idDentro = -1; static float _proximaDentro;
+
+        static void QuadroDentro()
+        {
+            var bus = Veiculo.Raiz();
+            var cam = Pos.Cam;
+            bool ligar = Cfg.SondaSalao.Value && bus != null && cam != null && Veiculo.Dentro(cam.transform.position);
+            if (!ligar) { if (_goDentro != null && _goDentro.activeSelf) _goDentro.SetActive(false); return; }
+            if (_goDentro == null)
+            {
+                _goDentro = new GameObject("BetterGraphics_SondaSalao");
+                UnityEngine.Object.DontDestroyOnLoad(_goDentro);
+                _sondaDentro = _goDentro.AddComponent<ReflectionProbe>();
+                _sondaDentro.mode = ReflectionProbeMode.Realtime;
+                _sondaDentro.refreshMode = ReflectionProbeRefreshMode.ViaScripting;
+                _sondaDentro.timeSlicingMode = ReflectionProbeTimeSlicingMode.NoTimeSlicing;
+                _sondaDentro.hdr = true;
+                _sondaDentro.boxProjection = true;
+                _sondaDentro.importance = 101;
+                _sondaDentro.blendDistance = 0.2f;
+                _sondaDentro.nearClipPlane = 0.05f;
+                _sondaDentro.farClipPlane = 150f;
+                _sondaDentro.shadowDistance = 40f;
+                _sondaDentro.clearFlags = ReflectionProbeClearFlags.Skybox;
+                _sondaDentro.resolution = 128;
+            }
+            if (!_goDentro.activeSelf) { _goDentro.SetActive(true); _idDentro = -1; _proximaDentro = 0f; }
+            if (_sonda != null && _sondaDentro.cullingMask != _sonda.cullingMask) _sondaDentro.cullingMask = _sonda.cullingMask;
+
+            // Caixa: o salão no espaço do mundo, sem a casca (as laterais encolhidas) e acima do piso.
+            var c = Veiculo.Caixa;
+            var min = new Vector3(c.min.x + 0.12f, c.min.y + 0.75f, c.min.z + 0.12f);
+            var max = new Vector3(c.max.x - 0.12f, c.max.y - 0.15f, c.max.z - 0.12f);
+            var wmin = Vector3.positiveInfinity; var wmax = Vector3.negativeInfinity;
+            for (int i = 0; i < 8; i++)
+            {
+                var p = bus.TransformPoint(new Vector3((i & 1) == 0 ? min.x : max.x, (i & 2) == 0 ? min.y : max.y, (i & 4) == 0 ? min.z : max.z));
+                wmin = Vector3.Min(wmin, p); wmax = Vector3.Max(wmax, p);
+            }
+            // Ponto de captura: no corredor, na altura dos olhos, à frente/atrás onde a câmera está.
+            var local = bus.InverseTransformPoint(cam.transform.position);
+            var origem = bus.TransformPoint(new Vector3(c.center.x, Mathf.Clamp(local.y, min.y + 0.3f, max.y - 0.3f), Mathf.Clamp(local.z, min.z + 0.5f, max.z - 0.5f)));
+            _goDentro.transform.position = origem;
+            var centro = (wmin + wmax) * 0.5f;
+            _sondaDentro.center = centro - origem;
+            _sondaDentro.size = wmax - wmin;
+
+            if (Time.unscaledTime < _proximaDentro) return;
+            if (_idDentro != -1 && !_sondaDentro.IsFinishedRendering(_idDentro)) return;
+            _idDentro = _sondaDentro.RenderProbe();
+            _proximaDentro = Time.unscaledTime + Mathf.Max(0.2f, Cfg.SondaIntervalo.Value);
         }
 
         internal static int Pinturas => _pinturas.Count;
