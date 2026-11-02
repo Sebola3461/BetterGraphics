@@ -3,7 +3,7 @@ using MelonLoader;
 using PBSLoaderCommonUtils;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(BetterGraphics.BetterGraphicsMod), "BetterGraphics", "1.3.0", "nzrn")]
+[assembly: MelonInfo(typeof(BetterGraphics.BetterGraphicsMod), "BetterGraphics", "1.4.0", "nzrn")]
 [assembly: MelonGame(null, "Proton Bus Simulator")]
 
 namespace BetterGraphics
@@ -46,6 +46,7 @@ namespace BetterGraphics
             Chuva.CenaMudou();
             Interior.CenaMudou();
             Molhado.CenaMudou();
+            WindshieldRain.CenaMudou();
         }
 
         public override void OnUpdate()
@@ -66,6 +67,7 @@ namespace BetterGraphics
                 Seguro(Vidros.Manter, "Vidros");
                 Seguro(Interior.Manter, "Interior");
                 Seguro(Molhado.Manter, "Molhado");
+                Seguro(WindshieldRain.Manter, "ChuvaVidro");
             }
             Seguro(Varredura.Quadro, "Varredura");
             Seguro(Reflexos.Quadro, "Sonda");
@@ -80,6 +82,7 @@ namespace BetterGraphics
             if (Cfg.Ativo.Value) Seguro(GI.Quadro, "GIQuadro");
             if (Cfg.Ativo.Value) Seguro(Interior.Quadro, "InteriorQuadro");
             if (Cfg.Ativo.Value) Seguro(Molhado.Quadro, "MolhadoQuadro");
+            if (Cfg.Ativo.Value) Seguro(WindshieldRain.Quadro, "ChuvaVidroQuadro");
             if (Cfg.Ativo.Value) Seguro(() => Luz.Aplicar(null), "LuzQuadro"); // reforço caso o patch no Enviro não rode
         }
 
@@ -105,6 +108,7 @@ namespace BetterGraphics
             Seguro(GI.Restaurar, "GI");
             Seguro(Interior.Restaurar, "Interior");
             Seguro(Molhado.Restaurar, "Molhado");
+            Seguro(WindshieldRain.Restaurar, "ChuvaVidro");
             Seguro(Chuva.CenaMudou, "Chuva");
             Varredura.Reiniciar(); // ao religar, tudo é reaplicado
         }
@@ -286,6 +290,34 @@ namespace BetterGraphics
             CeuOclusaoAlcance = c.CreateEntry("CeuOclusaoAlcance", 60f, "Distância (m) até onde um teto conta como cobertura");
             RaiosSol = c.CreateEntry("RaiosSol", false, "Raios radiais em tela do Enviro (vazam o céu pelas frestas: faixas amarelas e véu contra o sol)");
             RaiosSolForca = c.CreateEntry("RaiosSolForca", 0.5f, "Intensidade dos raios radiais");
+            CreateRainEntries();
+        }
+
+        internal static MelonPreferences_Entry<bool> RainGlassEnabled, WiperActive;
+        internal static MelonPreferences_Entry<int[]> RainGridResolution;
+        internal static MelonPreferences_Entry<float> RainEvaporation, RainGravityWeight, RainWindWeight, RainContactAngle, RainRoughnessWet, RainIor,
+            WiperSweepSpeed, WiperMinAngle, WiperMaxAngle, WiperBladeWidth, WiperAccumulation;
+
+        // Seções e chaves com os nomes do schema RainSystemConfig (uma seção por bloco).
+        static void CreateRainEntries()
+        {
+            var g = MelonPreferences.CreateCategory("Rain_WindshieldGrid", "BetterGraphics: água nos vidros do ônibus");
+            RainGlassEnabled = g.CreateEntry("enabled", true, "Gotas simuladas no para-brisa, película de água e gotas nas janelas (troca as manchas paradas do jogo)");
+            RainGridResolution = g.CreateEntry("texture_resolution", new[] { 256, 256 }, "Células da grade da película no para-brisa (largura, altura)");
+            RainEvaporation = g.CreateEntry("evaporation_rate", 0.02f, "Fração da película que seca por segundo; sem chuva, as gotas também secam nesse ritmo");
+            RainGravityWeight = g.CreateEntry("gravity_weight", 0.5f, "Peso da gravidade no escorrimento (0.5 = calibrado)");
+            RainWindWeight = g.CreateEntry("wind_deflection_weight", 0.8f, "Peso do vento da velocidade do ônibus, que empurra as gotas para cima e para os lados (0.8 = calibrado)");
+            var s = MelonPreferences.CreateCategory("Rain_WindshieldGrid_SurfaceProperties", "BetterGraphics: superfície do vidro molhado");
+            RainContactAngle = s.CreateEntry("contact_angle", 75f, "Ângulo de contato da água (graus): 75 vidro limpo; 100 a 120 encerado (gota redonda que escorrega); 30 a 50 sujo (achatada, gruda)");
+            RainRoughnessWet = s.CreateEntry("roughness_wet", 0.05f, "Aspereza da superfície da água (borra o reflexo do céu nas gotas)");
+            RainIor = s.CreateEntry("ior", 1.33f, "Índice de refração da água");
+            var w = MelonPreferences.CreateCategory("Rain_WiperSystem", "BetterGraphics: limpador de para-brisa");
+            WiperActive = w.CreateEntry("is_active", true, "A palheta do limpador limpa o vidro (segue a palheta do modelo; sem ela, um limpador virtual com os valores abaixo)");
+            WiperSweepSpeed = w.CreateEntry("sweep_speed", 1.5f, "Limpador virtual: ciclos de ida e volta por segundo dividido por 2 (o rápido é 1.6 vez isso)");
+            WiperMinAngle = w.CreateEntry("min_angle", -45f, "Limpador virtual: ângulo de parada a partir da vertical (graus)");
+            WiperMaxAngle = w.CreateEntry("max_angle", 45f, "Limpador virtual: ângulo no fim da varrida (graus)");
+            WiperBladeWidth = w.CreateEntry("blade_width", 0.03f, "Largura da faixa que a palheta limpa (m)");
+            WiperAccumulation = w.CreateEntry("accumulation_factor", 1.2f, "Quanto da água varrida se junta na ponta da palheta e escorre pela borda do arco");
         }
 
         // Para o Lab: muda uma preferência pelo nome.

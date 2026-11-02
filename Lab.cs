@@ -209,6 +209,11 @@ namespace BetterGraphics
                 case "censo": Resp(Censo()); return;
                 case "interior": Resp(Interior.Estado()); return;
                 case "molhado": Resp(Molhado.Estado()); return;
+                case "gotas": Resp(WindshieldRain.Estado()); return;
+                case "gotasdebug": Resp(WindshieldRain.Debug(p[1] == "1")); return;
+                case "pelicula": Resp(WindshieldRain.SaveFilm(Path.Combine(_prints, "pelicula.png"))); return; // película do para-brisa com as palhetas em vermelho
+                case "limpador": PBSLoaderCommonUtils.Veiculos.Comandos.Limpadores(); Resp("ok limpador"); return;              // liga/desliga a chave do limpador
+                case "limpadorrapido": PBSLoaderCommonUtils.Veiculos.Comandos.LimpadoresRapidos(); Resp("ok limpador rápido"); return;
                 case "molhadodebug": Resp(Molhado.Debug(int.Parse(p[1]))); return;
                 case "molhadomapa": Resp(Molhado.SalvarMapa(Path.Combine(_prints, "mapa_abrigo.png"))); return;
                 case "interiordebug": Resp(Interior.Debug(p[1] == "1")); return;
