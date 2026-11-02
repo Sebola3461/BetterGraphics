@@ -231,24 +231,49 @@ namespace BetterGraphics
             return false;
         }
 
-        // Roda: o pneu domina a área e é borracha (refletância ~4%, áspera). Sai do verniz da lataria.
+        // Roda: o pneu domina a área e é borracha fosca, sem reflexo nenhum. O Standard metálico sempre reflete ao
+        // menos 4%: a roda passa ao Standard (Specular setup) com especular preto e smoothness 0. Os shaders deferred
+        // do mod não dão brilho a especular zero (nem o de ângulo rasante).
+        static Shader _specSetup;
+        static readonly Dictionary<IntPtr, (Material m, Shader shader)> _borrachaShader = new();
+
         internal static void Borracha(Material m)
         {
-            if (!m.HasProperty("_Glossiness")) return;
+            if (!m.HasProperty("_Glossiness") || _borrachas.Contains(m.Pointer)) return;
             if (!_latarias.ContainsKey(m.Pointer))
                 _latarias[m.Pointer] = (m, m.GetFloat("_Glossiness"), m.HasProperty("_Metallic") ? m.GetFloat("_Metallic") : 0f);
             _borrachas.Add(m.Pointer);
-            m.SetFloat("_Glossiness", 0.3f);
-            if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", 0f);
+            if (_specSetup == null)
+            {
+                _specSetup = Shader.Find("Standard (Specular setup)");
+                Log.Msg(_specSetup != null ? "Rodas: borracha sem reflexo (Standard Specular)" : "Rodas: Standard (Specular setup) não está no jogo; borracha com o mínimo de 4% de reflexo");
+            }
+            if (_specSetup != null)
+            {
+                _borrachaShader[m.Pointer] = (m, m.shader);
+                int queue = m.renderQueue;
+                m.shader = _specSetup;
+                m.renderQueue = queue;
+                m.SetColor("_SpecColor", Color.black);
+                m.DisableKeyword("_SPECGLOSSMAP");
+            }
+            else if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", 0f);
+            m.SetFloat("_Glossiness", 0f);
+            m.EnableKeyword("_SPECULARHIGHLIGHTS_OFF");
+            m.EnableKeyword("_GLOSSYREFLECTIONS_OFF");
+            if (m.HasProperty("_SpecularHighlights")) m.SetFloat("_SpecularHighlights", 0f);
+            if (m.HasProperty("_GlossyReflections")) m.SetFloat("_GlossyReflections", 0f);
         }
 
         static readonly HashSet<IntPtr> _borrachas = new();
 
         static void RestaurarLataria()
         {
+            foreach (var (m, sh) in _borrachaShader.Values)
+                try { if (m != null && sh != null) { int q = m.renderQueue; m.shader = sh; m.renderQueue = q; m.DisableKeyword("_SPECULARHIGHLIGHTS_OFF"); m.DisableKeyword("_GLOSSYREFLECTIONS_OFF"); } } catch { }
             foreach (var (m, g, mt) in _latarias.Values)
                 try { if (m != null) { m.SetFloat("_Glossiness", g); if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", mt); } } catch { }
-            _latarias.Clear(); _borrachas.Clear(); _latariaAplicada = -1f;
+            _latarias.Clear(); _borrachas.Clear(); _borrachaShader.Clear(); _latariaAplicada = -1f;
         }
     }
 }

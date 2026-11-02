@@ -134,6 +134,8 @@ Shader "Hidden/BetterGraphics/Molhado"
 
                 float3 albedo = o.g0.rgb;
                 float3 f0 = o.g1.rgb;
+                // Especular zero é a borracha do pneu: continua fosca, molhada ou não.
+                if (max(f0.r, max(f0.g, f0.b)) < 0.001) return o;
                 float liso = o.g1.a;
                 // Metal só o cromado de verdade (F0 alto): o carregador de mapas do jogo põe metallic 0,6
                 // em quase tudo. A smoothness também não serve de porosidade (o Chao já a subiu na chuva).

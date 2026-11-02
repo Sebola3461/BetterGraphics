@@ -119,7 +119,8 @@ Shader "Hidden/BetterGraphics/DeferredReflections"
                 float3 energy = 1.0 + F0 * (1.0 / max(ab.x + ab.y, 0.05) - 1.0);
                 float a = perceptual * perceptual;
                 float so = saturate(pow(NoV + data.occlusion, exp2(-16.0 * a - 1.0)) - 1.0 + data.occlusion);
-                float3 rgb = env * (F0 * ab.x + ab.y) * energy * so;
+                // Especular zero (borracha do pneu) não reflete nada, nem de lado.
+                float3 rgb = env * (F0 * ab.x + ab.y) * energy * so * saturate(max(F0.r, max(F0.g, F0.b)) * 50.0);
                 if (_BG_ReflDebug > 0.5) rgb = boxed ? float3(0, so, 0) : float3(so * SkyAlong(worldPos, R), 0, 0);
 
                 half3 dist = DistanceFromAABB(worldPos, unity_SpecCube0_BoxMin.xyz, unity_SpecCube0_BoxMax.xyz);

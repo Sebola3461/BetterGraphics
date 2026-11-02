@@ -124,8 +124,8 @@ Shader "Hidden/BetterGraphics/DeferredShading"
                 float3 F = specColor + (1.0 - specColor) * pow(1.0 - LoH, 5.0);
                 float2 ab = EnvBrdf(perceptual, NoV);
                 float3 energy = 1.0 + specColor * (1.0 / max(ab.x + ab.y, 0.05) - 1.0);
-                float3 spec = D * vis * F * energy * UNITY_PI;
-                // A Unity não deixa sumir o especular de um material com F0 zero; aqui também não há.
+                // Especular zero (borracha do pneu) não brilha nem de lado: o Fresnel de Schlick daria brilho rasante.
+                float3 spec = D * vis * F * energy * UNITY_PI * saturate(max(specColor.r, max(specColor.g, specColor.b)) * 50.0);
 
                 // Difuso Burley (sem 1/pi, como a Unity).
                 float fd90 = 0.5 + 2.0 * LoH * LoH * perceptual;
