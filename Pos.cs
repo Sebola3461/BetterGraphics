@@ -152,8 +152,10 @@ namespace BetterGraphics
             // cinza médio. Um pouco menos de exposição mantém o "dia escuro". À noite não: a cena já está no
             // limite da adaptação e ficava preta.
             Set(_cor.postExposure, Cfg.Exposicao.Value + Cfg.ChuvaExposicao.Value * Chao.Umidade * GI.DiaFator() + cabine);
-            Set(_cor.contrast, Cfg.Contraste.Value);
-            Set(_cor.saturation, Cfg.Saturacao.Value);
+            // Chuva: luz toda difusa e ar cheio de água, cores apagadas e pouco contraste.
+            float chuva = Luz.ChuvaAgora();
+            Set(_cor.contrast, Cfg.Contraste.Value - 8f * chuva);
+            Set(_cor.saturation, Cfg.Saturacao.Value - 12f * chuva);
             // Chuva de dia puxa o tom para o frio (o céu fechado azula a luz difusa).
             Set(_cor.temperature, Cfg.Temperatura.Value - Cfg.ChuvaFrio.Value * Chao.Umidade * GI.DiaFator());
 

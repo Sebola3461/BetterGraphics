@@ -21,7 +21,12 @@ namespace BetterGraphics
         static bool _qualSalva; static float _oDist; static int _oCasc, _oLuzes; static ShadowResolution _oRes; static ShadowQuality _oSomb; static ShadowProjection _oProj;
         static bool _atmSalva; static bool _oVol, _oDirVol, _oShafts; static float _oScatter, _oAniso, _oShaftInt;
         static bool _reflSalvo; static float _oRefl;
-        static bool _fogSalvo; static float _oFogDist, _oFogAlt;
+        static bool _fogSalvo; static float _oFogDist, _oFogAlt, _oFogMax;
+
+        // Névoa da chuva mais forte (densidade do preset do Enviro, que ele multiplica por ~6,7), medida no lab:
+        // 0,001 deixava tudo nítido a 150 m; 0,003 virava neblina (a 40 m tudo sumia). 0,0018 dá ~250 m de
+        // visibilidade, a de uma chuva forte. Garoa fica com a névoa de cidade.
+        const float NeblinaChuvaForte = 0.0018f;
 
         internal static Il2Cpp.EnviroSky Sky
         {
@@ -128,10 +133,11 @@ namespace BetterGraphics
             if (_sol == null) return;
             if (float.IsNaN(_solEscrito) || !Mathf.Approximately(_sol.intensity, _solEscrito)) _solBase = _sol.intensity;
             // Chuva: as nuvens carregadas cortam o sol direto; a luz que sobra chega espalhada pelo céu (Ambiente).
-            _sol.intensity = _solBase * Cfg.SolForca.Value * (1f - 0.6f * ChuvaAgora());
+            _sol.intensity = _solBase * Cfg.SolForca.Value * (1f - 0.9f * ChuvaAgora());
             _solEscrito = _sol.intensity;
             if (float.IsNaN(_sombraEscrita) || !Mathf.Approximately(_sol.shadowStrength, _sombraEscrita)) _sombraBase = _sol.shadowStrength;
-            _sol.shadowStrength = Mathf.Lerp(_sombraBase, 1f, Cfg.SombraForca.Value);
+            // Debaixo de nuvem carregada quase não há sombra definida.
+            _sol.shadowStrength = Mathf.Lerp(_sombraBase, 1f, Cfg.SombraForca.Value) * (1f - 0.8f * ChuvaAgora());
             _sombraEscrita = _sol.shadowStrength;
             if (_sol.shadows == LightShadows.Hard) _sol.shadows = LightShadows.Soft;
         }
@@ -164,7 +170,9 @@ namespace BetterGraphics
             // A névoa do Enviro é iluminada pelo céu: dentro de um túnel virava um véu cinza claro.
             // Acompanha a luz do céu que chega na câmera.
             var fs = sky.fogSettings;
-            if (!_fogSalvo) { _fogSalvo = true; _oFogDist = fs.distanceFogIntensity; _oFogAlt = fs.heightFogIntensity; }
+            if (!_fogSalvo) { _fogSalvo = true; _oFogDist = fs.distanceFogIntensity; _oFogAlt = fs.heightFogIntensity; _oFogMax = fs.maximumFogDensity; }
+            // O Enviro limita a névoa a 87%: prédios a qualquer distância continuavam aparecendo. Na chuva o fundo some.
+            fs.maximumFogDensity = Mathf.Lerp(_oFogMax, 1f, ChuvaAgora());
             float k = Ceu.Fator();
             fs.distanceFogIntensity = _oFogDist * k;
             fs.heightFogIntensity = _oFogAlt * k;
@@ -180,7 +188,7 @@ namespace BetterGraphics
         {
             float min = Cfg.Neblina.Value;
             float umidadeAr = Mathf.Max(Cfg.RainAirHumidity.Value, 0f) / 0.95f; // 0,95 = padrão do schema, névoa calibrada
-            float chave = min + Cfg.ChuvaNeblina.Value * 1000f + umidadeAr * 7f;
+            float chave = min + umidadeAr * 7f;
             if (Mathf.Approximately(chave, _neblinaAplicada) && _neblinaOrig.Count > 0) return;
             var lista = sky.Weather.weatherPresets;
             if (lista == null || lista.Count == 0) return;
@@ -192,7 +200,7 @@ namespace BetterGraphics
                 // Chuva: cortina d'água no ar. A névoa sobe com a intensidade do clima (wetnessLevel 0 a 1):
                 // chuva forte fica com ~1,5 km de visibilidade, garoa com a névoa de cidade.
                 float chuva = Mathf.Clamp01(p.wetnessLevel);
-                p.fogDensity = Mathf.Max(o, Mathf.Lerp(min, Cfg.ChuvaNeblina.Value * umidadeAr, chuva * chuva));
+                p.fogDensity = Mathf.Max(o, Mathf.Lerp(min, NeblinaChuvaForte * umidadeAr, chuva * chuva));
             }
             _neblinaAplicada = chave;
         }
@@ -226,14 +234,14 @@ namespace BetterGraphics
                 sky.volumeLightSettings.ScatteringCoef = _oScatter; sky.volumeLightSettings.Anistropy = _oAniso;
                 sky.LightShafts.sunLightShafts = _oShafts; sky.lightshaftsSettings.intensity = _oShaftInt;
             }
-            if (_fogSalvo && sky != null) { sky.fogSettings.distanceFogIntensity = _oFogDist; sky.fogSettings.heightFogIntensity = _oFogAlt; }
+            if (_fogSalvo && sky != null) { sky.fogSettings.distanceFogIntensity = _oFogDist; sky.fogSettings.heightFogIntensity = _oFogAlt; sky.fogSettings.maximumFogDensity = _oFogMax; }
             RestaurarNeblina();
             if (_reflSalvo) { RenderSettings.reflectionIntensity = _oRefl; _reflSalvo = false; }
             CenaMudou();
         }
 
         // Chuva atual (0 a 1) já com o rain_intensity do schema.
-        static float ChuvaAgora() => Mathf.Clamp01(Chuva.Intensidade() * Mathf.Max(Cfg.RainIntensity.Value, 0f));
+        internal static float ChuvaAgora() => Mathf.Clamp01(Chuva.Intensidade() * Mathf.Max(Cfg.RainIntensity.Value, 0f));
 
         static Color Mul(Color c, float k) => new Color(c.r * k, c.g * k, c.b * k, 1f);
         static bool Igual(Color a, Color b) =>

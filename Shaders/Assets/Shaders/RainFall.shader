@@ -83,10 +83,13 @@ Shader "Hidden/BetterGraphics/RainFall"
                 vel += (turb - Turbulence(w, t - 0.1)) / 0.1;
                 w += turb;
 
-                // Some perto das bordas da caixa (onde a gota dá a volta) e na névoa.
-                float3 e = abs(rel) / (box * 0.5);
-                float fade = 1.0 - pow(saturate(max(max(e.x, e.y), e.z)), 6.0);
+                // Esmaece em esfera em volta da câmera, bem antes da borda da caixa (onde a gota dá a volta): com o
+                // esmaecimento só na borda, a caixa aparecia como um quadrado de chuva em volta do jogador.
                 float dist = length(w - _WorldSpaceCameraPos);
+                float radius = min(box.x, box.y) * 0.5;
+                float fade = 1.0 - smoothstep(radius * 0.45, radius * 0.95, dist);
+                // A camada de longe entra onde a de perto sai: a densidade muda aos poucos, sem degrau.
+                if (far) fade *= smoothstep(_BG_RF_Near.x * 0.25, _BG_RF_Near.x * 0.5, dist);
                 fade *= exp(-dist * _BG_RF_Fall.w * 1.5);
                 if (dist < 0.35) fade = 0.0;   // colada na lente seria uma barra na tela
 

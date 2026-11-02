@@ -3,7 +3,7 @@ using MelonLoader;
 using PBSLoaderCommonUtils;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(BetterGraphics.BetterGraphicsMod), "BetterGraphics", "1.5.0", "nzrn")]
+[assembly: MelonInfo(typeof(BetterGraphics.BetterGraphicsMod), "BetterGraphics", "1.5.1", "nzrn")]
 [assembly: MelonGame(null, "Proton Bus Simulator")]
 
 namespace BetterGraphics
@@ -169,7 +169,7 @@ namespace BetterGraphics
         internal static MelonPreferences_Entry<float> SombraDistancia, AmbienteForca, AmbCeu, AmbHorizonte, AmbChao, SolForca, SombraForca,
             Exposicao, ExposicaoMin, ExposicaoMax, Contraste, Saturacao, Temperatura, Bloom, BloomLimiar, AOIntensidade,
             SondaIntervalo, BrilhoMax, VidroReflexo, VidroReflexoPerto, VidroReflexoDentro, VidroVeu, VidroVeuPerto, VidroTom,
-            VolumetricaForca, RaiosSolForca, MapaBrilho, ChaoSeco, ChaoMolhado, CurvaPe, CurvaOmbro, ChaoEscurecer, ChuvaExposicao, CabineExposicao, CabineAmbiente, CabineMedicao, ChuvaNeblina, ChaoBaseUmida, ChuvaPneus, ChuvaPocas, ChuvaSarjeta,
+            VolumetricaForca, RaiosSolForca, MapaBrilho, ChaoSeco, ChaoMolhado, CurvaPe, CurvaOmbro, ChaoEscurecer, ChuvaExposicao, CabineExposicao, CabineAmbiente, CabineMedicao, ChaoBaseUmida, ChuvaPneus, ChuvaPocas, ChuvaSarjeta,
             Neblina, CeuOclusaoMin, CeuOclusaoAlcance, LatariaBrilho, LatariaVerniz, CurvaPeAlcance, CurvaOmbroAlcance, CurvaOmbroAngulo, CabinePe, DofAbertura, DofFocal, ChuvaFrio, JanelaRebate, JanelaForca;
 
         internal static void Criar()
@@ -198,7 +198,6 @@ namespace BetterGraphics
             ChuvaEmissoesQuadro = c.CreateEntry("ChuvaEmissoesQuadro", 140, "Máximo de partículas criadas por quadro pelos efeitos de chuva (desempenho)");
             ChaoEscurecer = c.CreateEntry("ChaoEscurecerMolhado", 0.65f, "Cor do chão encharcado em relação ao seco");
             ChuvaExposicao = c.CreateEntry("ChuvaExposicao", -0.35f, "Exposição a mais (EV) com chuva forte de dia (some à noite)");
-            ChuvaNeblina = c.CreateEntry("ChuvaNeblina", 0.001f, "Névoa com chuva forte (cortina d'água; 0.001 = ~1,5 km de visibilidade)");
             ChuvaFrio = c.CreateEntry("ChuvaFrio", 8f, "Quanto a chuva de dia puxa a cor para o frio (0 a 100)");
 
             VarreduraMs = c.CreateEntry("VarreduraMsPorQuadro", 1.0f, "Tempo máximo por quadro procurando vidros/pinturas/chão novos (ms)");

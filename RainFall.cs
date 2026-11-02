@@ -9,8 +9,13 @@ namespace BetterGraphics
     // fica escondida enquanto esta estiver ativa.
     internal static class RainFall
     {
-        const int MaxNear = 65536, MaxFar = 24576, Splashes = 4096;
-        static readonly Vector3 NearBox = new(24f, 18f, 24f), FarBox = new(110f, 40f, 110f);
+        const int MaxNear = 65536, MaxFar = 32768;
+        // Caixas cúbicas: o shader esmaece em esfera (raio = metade do lado), então só a esfera interna aparece.
+        static readonly Vector3 NearBox = new(30f, 30f, 30f), FarBox = new(90f, 90f, 90f);
+        // Respingos: uma vaga por célula de uma grade fixa no mundo, numa área de SplashCells x SplashCells células em
+        // volta da câmera; cada vaga tem anel + gotículas.
+        const int SplashCells = 48, SplashParts = 6, Splashes = SplashCells * SplashCells * SplashParts;
+        const float SplashCell = 0.5f;
 
         static Material _mat, _splashMat;
         static Mesh _mesh, _splashMesh;
@@ -54,7 +59,7 @@ namespace BetterGraphics
             var wind = Wind(time, out float turbulence);
             float density = Mathf.Max(Cfg.RainParticleDensity.Value, 0f) / 1000f; // gotas por m³
             int near = Mathf.Min(MaxNear, Mathf.RoundToInt(density * NearBox.x * NearBox.y * NearBox.z));
-            int far = Mathf.Min(MaxFar, Mathf.RoundToInt(density * 0.05f * FarBox.x * FarBox.y * FarBox.z));
+            int far = Mathf.Min(MaxFar, Mathf.RoundToInt(density * 0.02f * FarBox.x * FarBox.y * FarBox.z));
             float fog = 0f;
             try { fog = Luz.Sky.Weather.currentActiveWeatherPreset.fogDensity; } catch { }
 
@@ -73,7 +78,7 @@ namespace BetterGraphics
                 // Garoa: poucas gotas; temporal: todas.
                 m.SetVector("_BG_RF_Fall", new Vector4(Mathf.Max(Cfg.RainTerminalVelocity.Value, 1f), Mathf.Max(Cfg.RainMotionBlurStretch.Value, 0.1f), Mathf.Pow(rain, 1.5f), fog));
                 m.SetVector("_BG_RF_CamVel", _camVel);
-                m.SetVector("_BG_RF_Splash", new Vector4(Splashes, 0.45f, 18f, rain * rain));
+                m.SetVector("_BG_RF_Splash", new Vector4(SplashCells, SplashCell, 0.5f, rain));
                 if (shelter) m.SetTexture("_BG_RF_Shelter", map);
                 m.SetVector("_BG_RF_ShelterArea", shelter ? area : Vector4.zero);
                 m.SetFloat("_BG_RF_HasBus", bus ? 1f : 0f);
