@@ -190,7 +190,7 @@ namespace BetterGraphics
                 "Grava UserData/BetterGraphics_diagnostico.txt");
             DesligarNativo = c.CreateEntry("DesligarPosNativo", true, "Desliga o pós-processamento, filtros e presets de efeito do próprio jogo");
 
-            MapaMateriais = c.CreateEntry("MateriaisDoMapa", "original", "fosco = paredes/calçadas sem o metal falso do carregador de mapas; semmetal = só zera o metal; original");
+            MapaMateriais = c.CreateEntry("MateriaisDoMapa", "fisico", "fisico = objetos do mapa sem o metal falso do carregador (telha pintada vira tinta, inox/aço continuam metal; veículos intactos); fosco = idem em tudo; semmetal = só zera o metal; original");
             MapaBrilho = c.CreateEntry("MateriaisDoMapaBrilho", 0.2f, "Smoothness dos materiais do mapa no modo fosco");
 
             ChaoAtivo = c.CreateEntry("ChaoMolhado", true, "Asfalto com poças que refletem conforme a chuva");
@@ -301,7 +301,7 @@ namespace BetterGraphics
             CreateLightingEntries();
         }
 
-        internal static MelonPreferences_Entry<bool> RainGlassEnabled, WiperActive, RainFallEnabled, RainCollision, LightingCustomDeferred, LightingPhysicalFalloff, LightingCustomAmbient, LightingCustomReflections;
+        internal static MelonPreferences_Entry<bool> RainGlassEnabled, WiperActive, RainFallEnabled, RainCollision, LightingCustomDeferred, LightingPhysicalFalloff, LightingCustomAmbient, LightingCustomReflections, LightingPhysicalAlbedo;
         internal static MelonPreferences_Entry<float> LightingRangeMultiplier, LightingBrightness, LightingStreetlightKelvin,
             LightingAmbientStrength, LightingAmbientSkySaturation, LightingAmbientWallBounce, LightingGroundAlbedo, LightingCityGlow;
         internal static MelonPreferences_Entry<int> LightingShadowedStreetlights;
@@ -320,6 +320,7 @@ namespace BetterGraphics
             LightingRangeMultiplier = l.CreateEntry("light_range_multiplier", 1.4f, "Multiplica o alcance das luzes: a cauda fraca da queda física chega ao poste vizinho");
             LightingBrightness = l.CreateEntry("light_brightness", 2f, "Brilho das luzes pontuais e spot (1 = igual ao da Unity a 40% do alcance original; 2 = calibrado contra fotos de rua à noite)");
             LightingStreetlightKelvin = l.CreateEntry("streetlight_kelvin", 4500f, "Cor dos postes do mapa em kelvin (4000 a 5000 = LED; 2000 = sódio laranja; 0 = cor original do mapa)");
+            LightingPhysicalAlbedo = l.CreateEntry("physical_albedo", true, "Limita a refletância das cores ao que tinta real alcança (azul ou verde puro de textura vira cor de tinta); precisa do custom_ambient");
             LightingCustomReflections = l.CreateEntry("custom_reflections", true, "Reflexos deferred próprios: energia certa, oclusão especular e reflexo do céu só onde o ponto enxerga o céu");
             LightingCustomAmbient = l.CreateEntry("custom_ambient", true, "Luz ambiente própria por pixel: céu pela fração visível de cada ponto, rebote do chão iluminado e céu da cidade à noite");
             LightingAmbientStrength = l.CreateEntry("ambient_strength", 1f, "Força da luz ambiente própria");

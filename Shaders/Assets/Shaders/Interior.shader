@@ -79,6 +79,14 @@ Shader "Hidden/BetterGraphics/Interior"
                 float4 gb0 = tex2D(_CameraGBufferTexture0, uv);
                 float3 n = normalize(tex2D(_CameraGBufferTexture2, uv).xyz * 2.0 - 1.0);
                 float3 nl = normalize(mul((float3x3)_BG_MundoBus, n));
+                // Superfície voltada para fora da casca (lataria, teto por fora): não é interior. A caixa do salão inclui a
+                // casca, e a lataria recebia a "luz das janelas" (perdia parte da luz do céu).
+                // Por eixo (num articulado o centro fica a 9 m da frente: a direção a partir dele não serve).
+                float3 c = g - 0.5;
+                bool outward = (abs(c.x) > 0.35 && nl.x * sign(c.x) > 0.5)
+                            || (c.y > 0.35 && nl.y > 0.5)
+                            || (abs(c.z) > 0.45 && nl.z * sign(c.z) > 0.5);
+                if (outward) return 0;
                 float4 v = tex3D(_BG_Vis, g);
                 float vn = saturate(v.w + dot(v.xyz, nl));
                 if (_BG_Debug > 0.5) return float4(vn, vn, vn, 0) * 0.5;

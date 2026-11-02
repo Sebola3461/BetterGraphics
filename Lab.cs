@@ -212,6 +212,7 @@ namespace BetterGraphics
                 case "gotas": Resp(WindshieldRain.Estado()); return;
                 case "chuva": Resp(Chuva.Estado()); return;
                 case "deferred": Resp(DeferredLighting.Estado()); return;
+                case "vidros": Resp(Vidros.Estado()); return;
                 case "ambiente": Resp(AmbientLight.Estado()); return;
                 case "refldebug": Resp(DeferredLighting.ReflDebug(int.Parse(p[1]))); return;  // verde = oclusão especular nas sondas com caixa; vermelho = céu visível no reflexo do céu
                 case "ambdebug": Resp(AmbientLight.Debug(int.Parse(p[1]))); return;  // 1 RT3 sem a ambiente da Unity, 2 céu visível, 3 ambiente própria

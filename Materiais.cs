@@ -7,16 +7,39 @@ namespace BetterGraphics
     // Materiais do mapa. O carregador de mapas do jogo cria cada material como cópia de um modelo
     // "basicwhite" (Standard) com metallic 0.6 e _METALLICGLOSSMAP ligado: quase todo o mapa (paredes,
     // calçadas, prédios) vira semimetal, sem cor difusa própria e refletindo o céu. Por isso o visual
-    // "plástico" e acinzentado. Modo "fosco": dielétrico (metallic 0) com smoothness baixa, como
-    // concreto, reboco, asfalto e pintura de parede.
+    // "plástico" e acinzentado; uma telha azul vira semimetal que reflete o céu tingido de azul (néon).
+    // Modo "fosco": dielétrico (metallic 0) com smoothness baixa, como concreto, reboco, asfalto e pintura de parede.
+    // Modo "fisico" (padrão): o mesmo, só nos objetos do mapa (veículos ficam como estão), e o que a textura diz que é
+    // metal de verdade (inox, aço, alumínio, galvanizado, cromo) vira metal pleno.
     internal static class Materiais
     {
         sealed class Orig { public Material m; public bool kwMetal, kwSpec; public float metal, gloss, escala; }
+        static readonly Dictionary<IntPtr, bool> _vehicleRoot = new();
+
+        // Peça de veículo: tem um corpo físico acima dela (ônibus e tráfego) ou é de um modelo de ônibus (.ini).
+        // O cenário estático não tem; testar a raiz inteira pegava o mapa (algum cone ou placa com física).
+        static bool IsVehicle(Renderer r)
+        {
+            var root = r.transform.root;
+            if (_vehicleRoot.TryGetValue(root.Pointer, out bool v) && v) return true;
+            if (root.name.Contains(".ini", StringComparison.OrdinalIgnoreCase)) { _vehicleRoot[root.Pointer] = true; return true; }
+            return r.GetComponentInParent<Rigidbody>() != null;
+        }
+
+        static readonly string[] MetalWords = { "metal", "inox", "aco", "aço", "steel", "chrome", "cromo", "alumin", "galv" };
+
+        static bool LooksMetal(Material m)
+        {
+            var t = m.HasProperty("_MainTex") ? m.GetTexture("_MainTex") : null;
+            string n = (t != null ? t.name : "") + " " + m.name;
+            foreach (var w in MetalWords) if (n.Contains(w, StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }
         static readonly Dictionary<IntPtr, Orig> _orig = new();
         static string _modoAplicado = "";
         static float _brilhoAplicado = -1f, _proxima;
 
-        internal static void CenaMudou() { _proxima = 0f; }
+        internal static void CenaMudou() { _proxima = 0f; _vehicleRoot.Clear(); }
 
         internal static void Manter()
         {
@@ -34,6 +57,7 @@ namespace BetterGraphics
                 {
                     if (m == null || m.shader == null || _orig.ContainsKey(m.Pointer)) continue;
                     if (m.shader.name != "Standard" || !m.name.StartsWith("basicwhite", StringComparison.Ordinal)) continue;
+                    if (modo == "fisico" && IsVehicle(r)) continue;
                     var o = new Orig
                     {
                         m = m, kwMetal = m.IsKeywordEnabled("_METALLICGLOSSMAP"), kwSpec = m.IsKeywordEnabled("_SPECGLOSSMAP"),
@@ -48,7 +72,15 @@ namespace BetterGraphics
 
         static void Aplicar(Material m, string modo)
         {
-            if (modo == "fosco")
+            if (modo == "fisico")
+            {
+                m.DisableKeyword("_METALLICGLOSSMAP");
+                m.DisableKeyword("_SPECGLOSSMAP");
+                bool metal = LooksMetal(m);
+                m.SetFloat("_Metallic", metal ? 1f : 0f);
+                m.SetFloat("_Glossiness", metal ? 0.6f : Cfg.MapaBrilho.Value);
+            }
+            else if (modo == "fosco")
             {
                 m.DisableKeyword("_METALLICGLOSSMAP");
                 m.DisableKeyword("_SPECGLOSSMAP");

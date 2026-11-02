@@ -67,11 +67,13 @@ namespace BetterGraphics
             bool doOnibus = bus != null && r.transform.root == bus;
             // "_ref" no nome do objeto é a marca de lataria refletiva dos veículos (pintura com verniz).
             bool lataria = r.name.Contains("_ref", StringComparison.Ordinal);
+            // A roda também vem marcada "_ref", mas pneu é borracha fosca (aro e pneu dividem o material).
+            bool roda = lataria && Reflexos.IsWheel(r.name);
             for (int i = 0; i < mats.Length; i++)
             {
                 var m = mats[i];
                 if (m == null) continue;
-                if (lataria && m.shader != null && m.shader.name == "Standard") Reflexos.Lataria(m);
+                if (lataria && m.shader != null && m.shader.name == "Standard") { if (roda) Reflexos.Borracha(m); else Reflexos.Lataria(m); }
                 switch (Classificar(m))
                 {
                     case Tipo.Pintura: if (doOnibus) Reflexos.Pintura(m); break;

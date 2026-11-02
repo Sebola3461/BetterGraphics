@@ -212,7 +212,7 @@ namespace BetterGraphics
             if (Mathf.Approximately(_latariaAplicada, chave)) return;
             _latariaAplicada = chave;
             foreach (var (m, g, mt) in _latarias.Values)
-                if (m != null) { if (Cfg.LatariaBrilho.Value > 0f) AplicarLataria(m); else { m.SetFloat("_Glossiness", g); m.SetFloat("_Metallic", mt); } }
+                if (m != null && !_borrachas.Contains(m.Pointer)) { if (Cfg.LatariaBrilho.Value > 0f) AplicarLataria(m); else { m.SetFloat("_Glossiness", g); m.SetFloat("_Metallic", mt); } }
         }
 
         // O Standard não tem verniz (uma camada lisa por cima da cor): com tinta branca o reflexo de 4%
@@ -223,11 +223,32 @@ namespace BetterGraphics
             if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", Cfg.LatariaVerniz.Value);
         }
 
+        static readonly string[] WheelWords = { "wheel", "roda", "pneu", "tire", "tyre" };
+
+        internal static bool IsWheel(string name)
+        {
+            foreach (var w in WheelWords) if (name.Contains(w, StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }
+
+        // Roda: o pneu domina a área e é borracha (refletância ~4%, áspera). Sai do verniz da lataria.
+        internal static void Borracha(Material m)
+        {
+            if (!m.HasProperty("_Glossiness")) return;
+            if (!_latarias.ContainsKey(m.Pointer))
+                _latarias[m.Pointer] = (m, m.GetFloat("_Glossiness"), m.HasProperty("_Metallic") ? m.GetFloat("_Metallic") : 0f);
+            _borrachas.Add(m.Pointer);
+            m.SetFloat("_Glossiness", 0.3f);
+            if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", 0f);
+        }
+
+        static readonly HashSet<IntPtr> _borrachas = new();
+
         static void RestaurarLataria()
         {
             foreach (var (m, g, mt) in _latarias.Values)
                 try { if (m != null) { m.SetFloat("_Glossiness", g); if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", mt); } } catch { }
-            _latarias.Clear(); _latariaAplicada = -1f;
+            _latarias.Clear(); _borrachas.Clear(); _latariaAplicada = -1f;
         }
     }
 }
