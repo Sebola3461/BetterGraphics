@@ -24,9 +24,9 @@ namespace BetterGraphics
         static bool _fogSalvo; static float _oFogDist, _oFogAlt, _oFogMax;
 
         // Névoa da chuva mais forte (densidade do preset do Enviro, que ele multiplica por ~6,7), medida no lab:
-        // 0,001 deixava tudo nítido a 150 m; 0,003 virava neblina (a 40 m tudo sumia). 0,0018 dá ~250 m de
-        // visibilidade, a de uma chuva forte. Garoa fica com a névoa de cidade.
-        const float NeblinaChuvaForte = 0.0018f;
+        // 0,003 virava neblina (a 40 m tudo sumia) e 0,0018 ainda pesava. Com 0,0012 e o teto em 100% o perto fica
+        // limpo e o horizonte some. Garoa fica com a névoa de cidade.
+        const float NeblinaChuvaForte = 0.0012f;
 
         internal static Il2Cpp.EnviroSky Sky
         {
