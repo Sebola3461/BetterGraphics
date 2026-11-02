@@ -208,6 +208,9 @@ namespace BetterGraphics
                 case "olhar": Resp(Olhar(p.Length > 1 ? F(p[1]) : 0.5f, p.Length > 2 ? F(p[2]) : 0.5f)); return;
                 case "censo": Resp(Censo()); return;
                 case "interior": Resp(Interior.Estado()); return;
+                case "molhado": Resp(Molhado.Estado()); return;
+                case "molhadodebug": Resp(Molhado.Debug(int.Parse(p[1]))); return;
+                case "molhadomapa": Resp(Molhado.SalvarMapa(Path.Combine(_prints, "mapa_abrigo.png"))); return;
                 case "interiordebug": Resp(Interior.Debug(p[1] == "1")); return;
                 case "sombras": Resp(Sombras()); return; // sombras: projeção/recepção de sombra no ônibus do jogador e luzes ativas
                 case "andar": // move o ônibus do jogador para a frente a V m/s (física congelada); "andar 0" para

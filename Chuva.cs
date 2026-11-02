@@ -39,7 +39,7 @@ namespace BetterGraphics
         }
 
         // Intensidade da chuva agora (0 a 1): o clima atual, não a umidade do chão (que demora a secar).
-        static float Intensidade()
+        internal static float Intensidade()
         {
             var sky = Luz.Sky;
             if (sky == null) return 0f;

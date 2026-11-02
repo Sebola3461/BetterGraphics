@@ -8,6 +8,8 @@ Iluminação mais realista para o Proton Bus Simulator. O foco é luz e reflexos
 - Pintura do ônibus com verniz, e reflexos com probes locais. Dentro do ônibus, piso e painéis refletem o próprio interior.
 - Luz do interior vindo pelas janelas, calculada por pixel: claro perto do vidro, sombra sob os bancos e no piso.
 - Asfalto molhado com poças que refletem conforme a chuva.
+- Na chuva tudo que fica exposto molha (calçadas, paredes, veículos, grama), com poças e ondulações das gotas; embaixo de
+  telhado, túnel e abrigo fica seco.
 - Chuva mais densa, com respingo dos pneus e splash nas poças, vento em rajadas e tom mais frio de dia. Não chove dentro do ônibus.
 - O pós-processamento nativo do jogo é desligado, para não somar efeitos.
 

@@ -3,7 +3,7 @@ using MelonLoader;
 using PBSLoaderCommonUtils;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(BetterGraphics.BetterGraphicsMod), "BetterGraphics", "1.2.0", "nzrn")]
+[assembly: MelonInfo(typeof(BetterGraphics.BetterGraphicsMod), "BetterGraphics", "1.3.0", "nzrn")]
 [assembly: MelonGame(null, "Proton Bus Simulator")]
 
 namespace BetterGraphics
@@ -45,6 +45,7 @@ namespace BetterGraphics
             Chao.CenaMudou();
             Chuva.CenaMudou();
             Interior.CenaMudou();
+            Molhado.CenaMudou();
         }
 
         public override void OnUpdate()
@@ -64,6 +65,7 @@ namespace BetterGraphics
                 Seguro(GI.Manter, "GI");
                 Seguro(Vidros.Manter, "Vidros");
                 Seguro(Interior.Manter, "Interior");
+                Seguro(Molhado.Manter, "Molhado");
             }
             Seguro(Varredura.Quadro, "Varredura");
             Seguro(Reflexos.Quadro, "Sonda");
@@ -77,6 +79,7 @@ namespace BetterGraphics
             if (Cfg.Ativo.Value) Seguro(Pos.Quadro, "DofQuadro");
             if (Cfg.Ativo.Value) Seguro(GI.Quadro, "GIQuadro");
             if (Cfg.Ativo.Value) Seguro(Interior.Quadro, "InteriorQuadro");
+            if (Cfg.Ativo.Value) Seguro(Molhado.Quadro, "MolhadoQuadro");
             if (Cfg.Ativo.Value) Seguro(() => Luz.Aplicar(null), "LuzQuadro"); // reforço caso o patch no Enviro não rode
         }
 
@@ -101,6 +104,7 @@ namespace BetterGraphics
             Seguro(Chao.Restaurar, "Chao");
             Seguro(GI.Restaurar, "GI");
             Seguro(Interior.Restaurar, "Interior");
+            Seguro(Molhado.Restaurar, "Molhado");
             Seguro(Chuva.CenaMudou, "Chuva");
             Varredura.Reiniciar(); // ao religar, tudo é reaplicado
         }
@@ -149,7 +153,7 @@ namespace BetterGraphics
     {
         internal static MelonPreferences_Category Cat;
         internal static MelonPreferences_Entry<bool> Ativo, DesligarNativo, Deferred, AmbienteCeu, AutoExposicao, AO, SSR,
-            Sonda, ReflexoPintura, VidrosAtivo, Volumetrica, RaiosSol, RadiantGI, ChaoAtivo, VolumeDoJogo, CorrigirLayer, VidroSemSombra, CeuOclusao, ChaoPocas, ChuvaEfeitos, Dof, SondaSalao, LuzJanela;
+            Sonda, ReflexoPintura, VidrosAtivo, Volumetrica, RaiosSol, RadiantGI, ChaoAtivo, VolumeDoJogo, CorrigirLayer, VidroSemSombra, CeuOclusao, ChaoPocas, ChuvaEfeitos, Dof, SondaSalao, LuzJanela, ChuvaGlobal;
         internal static MelonPreferences_Entry<float> VarreduraMs, GIIntensidade, GIIntensidadeDentro, GINoite, GIAtenuacao, GIAlcance, GIMapaSombraForca;
         internal static MelonPreferences_Entry<bool> GIAtivo, GIRebater, GISondas, GIMapaSombra;
         internal static MelonPreferences_Entry<int> GIRaios, GIQualidade, ChuvaEmissoesQuadro;
@@ -180,6 +184,7 @@ namespace BetterGraphics
             ChaoMolhado = c.CreateEntry("ChaoBrilhoMolhado", 1.0f, "Brilho do mapa de poças com chuva forte");
             ChaoPocas = c.CreateEntry("ChaoPocas", true, "Refaz o mapa de poças do asfalto (sem o granulado de pontinhos brilhantes)");
             ChaoBaseUmida = c.CreateEntry("ChaoBaseUmida", 0.72f, "Smoothness do asfalto molhado fora das poças (encharcado)");
+            ChuvaGlobal = c.CreateEntry("ChuvaGlobal", true, "Na chuva tudo que fica exposto molha: escurece, brilha, forma poças com ondulações (embaixo de telhado e túnel fica seco). Usa a umidade do ChaoMolhado");
             ChuvaEfeitos = c.CreateEntry("ChuvaEfeitos", true, "Respingo dos pneus, splash nas poças e água correndo na sarjeta");
             ChuvaPneus = c.CreateEntry("ChuvaPneus", 1.0f, "Quantidade de spray/névoa levantada pelos pneus no molhado");
             ChuvaPocas = c.CreateEntry("ChuvaPocas", 1.0f, "Força do splash ao passar numa poça");

@@ -116,14 +116,15 @@ namespace BetterGraphics
 
             var sky = Luz.Sky;
             float w = sky != null ? Mathf.Clamp01(sky.Weather.curWetness) : 0f;
-            float chave = Cfg.ChaoSeco.Value + Cfg.ChaoMolhado.Value * 10f + Cfg.ChaoEscurecer.Value * 100f;
+            float chave = Cfg.ChaoSeco.Value + Cfg.ChaoMolhado.Value * 10f + Cfg.ChaoEscurecer.Value * 100f + (Molhado.Ativo ? 1000f : 0f);
             if (Mathf.Abs(w - _molhado) < 0.01f && Mathf.Approximately(chave, _chave)) return;
             _molhado = w; _chave = chave;
             // A curva sobe rápido no começo: chão escurece e brilha logo que começa a chover.
             float k = Mathf.Sqrt(w);
             float escala = Mathf.Lerp(Cfg.ChaoSeco.Value, Cfg.ChaoMolhado.Value, k);
             // Água nos poros escurece concreto e asfalto (bem mais que só o brilho).
-            float esc = Mathf.Lerp(1f, Cfg.ChaoEscurecer.Value, k);
+            // Com o passe de umidade ligado o escurecimento é dele (aqui seria em dobro).
+            float esc = Molhado.Ativo ? 1f : Mathf.Lerp(1f, Cfg.ChaoEscurecer.Value, k);
             foreach (var o in _orig.Values)
             {
                 if (o.m == null) continue;

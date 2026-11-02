@@ -115,9 +115,8 @@ namespace BetterGraphics
             var cam = _camCb;
             var vp = GL.GetGPUProjectionMatrix(cam.projectionMatrix, true) * cam.worldToCameraMatrix;
             _mat.SetMatrix("_BG_InvVP", vp.inverse);
-            var w2b = _bus.worldToLocalMatrix;
-            var b2g = Matrix4x4.TRS(-Vector3.Scale(_grade.min, Inverso(_grade.size)), Quaternion.identity, Inverso(_grade.size));
-            _mat.SetMatrix("_BG_MundoGrade", b2g * w2b);
+            Grade(out var grade);
+            _mat.SetMatrix("_BG_MundoGrade", grade);
             _mat.SetMatrix("_BG_MundoBus", Matrix4x4.Rotate(Quaternion.Inverse(_bus.rotation)));
             _mat.SetVector("_BG_GradeTam", _grade.size);
 
@@ -140,6 +139,15 @@ namespace BetterGraphics
         }
 
         static bool _debug;
+
+        // Mundo -> caixa do salão (0..1), para outros passes saberem o que é dentro do ônibus.
+        internal static bool Grade(out Matrix4x4 m)
+        {
+            m = Matrix4x4.identity;
+            if (_bus == null || _vis == null) return false;
+            m = Matrix4x4.TRS(-Vector3.Scale(_grade.min, Inverso(_grade.size)), Quaternion.identity, Inverso(_grade.size)) * _bus.worldToLocalMatrix;
+            return true;
+        }
         internal static string Debug(bool v) { _debug = v; return "interior debug " + v; }
 
         static Vector3 Inverso(Vector3 v) => new(1f / v.x, 1f / v.y, 1f / v.z);
@@ -161,7 +169,7 @@ namespace BetterGraphics
             var tris = new List<N3>();
             // Inclui os inativos: as janelas têm versão seca e molhada, trocadas pela chuva.
             foreach (var r in bus.GetComponentsInChildren<Renderer>(true))
-                if (r != null && !(r is ParticleSystemRenderer) && EhVidro(r)) Triangulos(r, bus, tris);
+                if (r != null && r.TryCast<ParticleSystemRenderer>() == null && EhVidro(r)) Triangulos(r, bus, tris);
             float tom = Cfg.VidroTom.Value;
             var dirs = new N3[Direcoes];
             for (int i = 0; i < Direcoes; i++) dirs[i] = new N3(_dir[i].x, _dir[i].y, _dir[i].z);
@@ -209,7 +217,7 @@ namespace BetterGraphics
             Mesh mesh = null;
             var mf = r.GetComponent<MeshFilter>();
             if (mf != null) mesh = mf.sharedMesh;
-            else if (r is SkinnedMeshRenderer sk) mesh = sk.sharedMesh;
+            else if (r.TryCast<SkinnedMeshRenderer>() is SkinnedMeshRenderer sk) mesh = sk.sharedMesh;
             if (mesh == null) return;
             var m = bus.worldToLocalMatrix * r.transform.localToWorldMatrix;
             if (!mesh.isReadable)
