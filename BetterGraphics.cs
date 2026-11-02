@@ -49,7 +49,6 @@ namespace BetterGraphics
             WindshieldRain.CenaMudou();
             RainFall.CenaMudou();
             DeferredLighting.CenaMudou();
-            AmbientLight.CenaMudou();
         }
 
         public override void OnUpdate()
@@ -72,7 +71,6 @@ namespace BetterGraphics
                 Seguro(Molhado.Manter, "Molhado");
                 Seguro(WindshieldRain.Manter, "ChuvaVidro");
                 Seguro(DeferredLighting.Manter, "Deferred");
-                Seguro(AmbientLight.Manter, "Ambiente");
             }
             Seguro(Varredura.Quadro, "Varredura");
             Seguro(Reflexos.Quadro, "Sonda");
@@ -89,7 +87,6 @@ namespace BetterGraphics
             if (Cfg.Ativo.Value) Seguro(Interior.Quadro, "InteriorQuadro");
             if (Cfg.Ativo.Value) Seguro(Molhado.Quadro, "MolhadoQuadro");
             if (Cfg.Ativo.Value) Seguro(WindshieldRain.Quadro, "ChuvaVidroQuadro");
-            if (Cfg.Ativo.Value) Seguro(AmbientLight.Quadro, "AmbienteQuadro");
             if (Cfg.Ativo.Value) Seguro(RainFall.Quadro, "ChuvaGPU"); else RainFall.CenaMudou();
             if (Cfg.Ativo.Value) Seguro(() => Luz.Aplicar(null), "LuzQuadro"); // reforço caso o patch no Enviro não rode
         }
@@ -118,7 +115,6 @@ namespace BetterGraphics
             Seguro(Molhado.Restaurar, "Molhado");
             Seguro(WindshieldRain.Restaurar, "ChuvaVidro");
             Seguro(DeferredLighting.Restaurar, "Deferred");
-            Seguro(AmbientLight.Restaurar, "Ambiente");
             Seguro(Chuva.CenaMudou, "Chuva");
             Varredura.Reiniciar(); // ao religar, tudo é reaplicado
         }
@@ -301,9 +297,9 @@ namespace BetterGraphics
             CreateLightingEntries();
         }
 
-        internal static MelonPreferences_Entry<bool> RainGlassEnabled, WiperActive, RainFallEnabled, RainCollision, LightingCustomDeferred, LightingPhysicalFalloff, LightingCustomAmbient, LightingCustomReflections, LightingPhysicalAlbedo;
+        internal static MelonPreferences_Entry<bool> RainGlassEnabled, WiperActive, RainFallEnabled, RainCollision, LightingCustomDeferred, LightingPhysicalFalloff, LightingCustomReflections, LightingPhysicalGlass;
         internal static MelonPreferences_Entry<float> LightingRangeMultiplier, LightingBrightness, LightingStreetlightKelvin,
-            LightingAmbientStrength, LightingAmbientSkySaturation, LightingAmbientWallBounce, LightingGroundAlbedo, LightingCityGlow;
+            LightingGlassSideTransmission, LightingGlassFrontTransmission, LightingGlassInsideReflection;
         internal static MelonPreferences_Entry<int> LightingShadowedStreetlights;
         internal static MelonPreferences_Entry<float[]> RainWindVelocity;
         internal static MelonPreferences_Entry<float> RainIntensity, RainGlobalWetness, RainAirHumidity, RainParticleDensity, RainTerminalVelocity, RainMotionBlurStretch;
@@ -320,14 +316,11 @@ namespace BetterGraphics
             LightingRangeMultiplier = l.CreateEntry("light_range_multiplier", 1.4f, "Multiplica o alcance das luzes: a cauda fraca da queda física chega ao poste vizinho");
             LightingBrightness = l.CreateEntry("light_brightness", 2f, "Brilho das luzes pontuais e spot (1 = igual ao da Unity a 40% do alcance original; 2 = calibrado contra fotos de rua à noite)");
             LightingStreetlightKelvin = l.CreateEntry("streetlight_kelvin", 4500f, "Cor dos postes do mapa em kelvin (4000 a 5000 = LED; 2000 = sódio laranja; 0 = cor original do mapa)");
-            LightingPhysicalAlbedo = l.CreateEntry("physical_albedo", true, "Limita a refletância das cores ao que tinta real alcança (azul ou verde puro de textura vira cor de tinta); precisa do custom_ambient");
+            LightingPhysicalGlass = l.CreateEntry("physical_glass", true, "Vidro dos veículos com Fresnel de verdade (espelho de lado, transparente de frente) no lugar do véu + reflexo somado");
+            LightingGlassSideTransmission = l.CreateEntry("glass_side_transmission", 0.3f, "Luz que atravessa as janelas laterais (fumê de ônibus urbano: 0.25 a 0.4)");
+            LightingGlassFrontTransmission = l.CreateEntry("glass_front_transmission", 0.85f, "Luz que atravessa o para-brisa e os vidros de frente e trás");
+            LightingGlassInsideReflection = l.CreateEntry("glass_inside_reflection", 0.35f, "Reflexo dos vidros visto de dentro do ônibus (1 = o da sonda do salão; menos = para-brisa limpo)");
             LightingCustomReflections = l.CreateEntry("custom_reflections", true, "Reflexos deferred próprios: energia certa, oclusão especular e reflexo do céu só onde o ponto enxerga o céu");
-            LightingCustomAmbient = l.CreateEntry("custom_ambient", true, "Luz ambiente própria por pixel: céu pela fração visível de cada ponto, rebote do chão iluminado e céu da cidade à noite");
-            LightingAmbientStrength = l.CreateEntry("ambient_strength", 1f, "Força da luz ambiente própria");
-            LightingAmbientSkySaturation = l.CreateEntry("ambient_sky_saturation", 0.7f, "Saturação da luz do céu na sombra (1 = a do céu do jogo; menos = sombra menos azul)");
-            LightingAmbientWallBounce = l.CreateEntry("ambient_wall_bounce", 0.5f, "Quanto do rebote do chão o que tapa o céu (paredes, marquises) devolve");
-            LightingGroundAlbedo = l.CreateEntry("ground_albedo", 0.25f, "Albedo médio do chão para o rebote da luz do sol (asfalto 0.1, concreto 0.3)");
-            LightingCityGlow = l.CreateEntry("city_glow", 0.03f, "Brilho do céu da cidade à noite na luz ambiente (poluição luminosa)");
             LightingShadowedStreetlights = l.CreateEntry("shadowed_streetlights", 2, "Quantos postes perto da câmera projetam sombra (cada um custa um mapa de sombra cúbico)");
         }
 

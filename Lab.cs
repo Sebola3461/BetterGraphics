@@ -213,9 +213,7 @@ namespace BetterGraphics
                 case "chuva": Resp(Chuva.Estado()); return;
                 case "deferred": Resp(DeferredLighting.Estado()); return;
                 case "vidros": Resp(Vidros.Estado()); return;
-                case "ambiente": Resp(AmbientLight.Estado()); return;
                 case "refldebug": Resp(DeferredLighting.ReflDebug(int.Parse(p[1]))); return;  // verde = oclusão especular nas sondas com caixa; vermelho = céu visível no reflexo do céu
-                case "ambdebug": Resp(AmbientLight.Debug(int.Parse(p[1]))); return;  // 1 RT3 sem a ambiente da Unity, 2 céu visível, 3 ambiente própria
                 case "luzes": Resp(Luzes(p.Length > 1 ? int.Parse(p[1]) : 15)); return;  // luzes N: as N luzes pontuais/spot mais perto da câmera
                 case "gotasdebug": Resp(WindshieldRain.Debug(p[1] == "1")); return;
                 case "pelicula": Resp(WindshieldRain.SaveFilm(Path.Combine(_prints, "pelicula.png"))); return; // película do para-brisa com as palhetas em vermelho

@@ -76,9 +76,7 @@ namespace BetterGraphics
                 Construir(bus);
             }
             Receber();
-            // Com a luz ambiente própria ligada ela é a única que escreve a ambiente (usa este mapa no salão): dois
-            // passes mexendo no mesmo RT3, em ordem que muda, deixavam a lataria rosa e amarela.
-            if (_vis != null && !AmbientLight.Ativo) Pendurar(Pos.Cam); else Tirar();
+            if (_vis != null) Pendurar(Pos.Cam);
         }
 
         // ---- passe na câmera ----
@@ -150,16 +148,6 @@ namespace BetterGraphics
             m = Matrix4x4.TRS(-Vector3.Scale(_grade.min, Inverso(_grade.size)), Quaternion.identity, Inverso(_grade.size)) * _bus.worldToLocalMatrix;
             return true;
         }
-        // Mapa das janelas para a luz ambiente própria: visibilidade (rgb = direção, a = constante), mundo -> salão (0 a 1),
-        // rotação mundo -> ônibus, tamanho do salão (m) e quanto o salão é aberto (vidro).
-        internal static bool Janelas(out Texture vis, out Matrix4x4 grade, out Matrix4x4 rot, out Vector3 tamanho, out float abertura)
-        {
-            vis = _vis; tamanho = _grade.size; abertura = _abertura; rot = Matrix4x4.identity; grade = Matrix4x4.identity;
-            if (!Cfg.LuzJanela.Value || !Grade(out grade)) return false;
-            rot = Matrix4x4.Rotate(Quaternion.Inverse(_bus.rotation));
-            return true;
-        }
-
         internal static string Debug(bool v) { _debug = v; return "interior debug " + v; }
 
         static Vector3 Inverso(Vector3 v) => new(1f / v.x, 1f / v.y, 1f / v.z);

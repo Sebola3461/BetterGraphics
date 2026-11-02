@@ -13,6 +13,8 @@ namespace BetterGraphics
     // Força pela distância da câmera ao ônibus: colado no vidro se vê através, de longe vira espelho.
     // Dentro do ônibus quase nada reflete e não há véu.
     // Só peças pequenas dentro de veículos: na chuva o jogo liga outros objetos com o mesmo shader.
+    // Com o vidro físico ligado (Lighting.physical_glass) o vidro seco vira o VehicleGlass, sem véu nem camada: Fresnel de
+    // verdade e transmissão por objeto (para-brisa claro, janelas laterais fumê).
     internal static class Vidros
     {
         sealed class Vidro { public Material m; public bool janela; public Color refl, cor; public Texture cube; }
@@ -23,6 +25,51 @@ namespace BetterGraphics
         static Material _modelo, _camada;
         static Shader _shaderVeu;
         internal static void CenaMudou() { }
+
+        static Shader _glassShader;
+        static bool _noGlassShader;
+        static readonly Dictionary<IntPtr, Material> _glassClone = new();     // vidro do jogo -> VehicleGlass
+        static readonly Dictionary<IntPtr, Material> _glassOriginal = new();  // VehicleGlass -> vidro do jogo
+
+        static Material GlassClone(Material game)
+        {
+            if (_glassClone.TryGetValue(game.Pointer, out var c) && c != null) return c;
+            c = new Material(_glassShader) { name = "BetterGraphics_VehicleGlass", renderQueue = game.renderQueue, hideFlags = HideFlags.DontUnloadUnusedAsset };
+            if (game.HasProperty("_Color")) c.SetColor("_Color", game.GetColor("_Color"));
+            _glassClone[game.Pointer] = c;
+            _glassOriginal[c.Pointer] = game;
+            return c;
+        }
+
+        // Vidro voltado para a frente ou para trás do veículo (fino em z no espaço dele): para-brisa, vigia, farol.
+        static bool FacesFrontOrBack(Renderer r)
+        {
+            var root = r.transform.root;
+            var b = r.bounds;
+            Vector3 mn = Vector3.one * float.MaxValue, mx = Vector3.one * float.MinValue;
+            for (int i = 0; i < 8; i++)
+            {
+                var p = root.InverseTransformPoint(new Vector3((i & 1) == 0 ? b.min.x : b.max.x, (i & 2) == 0 ? b.min.y : b.max.y, (i & 4) == 0 ? b.min.z : b.max.z));
+                mn = Vector3.Min(mn, p); mx = Vector3.Max(mx, p);
+            }
+            var s = mx - mn;
+            return s.z < 0.4f * Mathf.Max(s.x, s.y);
+        }
+
+        static bool PhysicalGlass(Renderer r, Material vidro)
+        {
+            if (!Cfg.LightingPhysicalGlass.Value || _noGlassShader) return false;
+            if (_glassShader == null)
+            {
+                _glassShader = Pacote.Shader("VehicleGlass");
+                if (_glassShader == null) { _noGlassShader = true; return false; }
+            }
+            r.sharedMaterials = new[] { GlassClone(vidro) };
+            var block = new MaterialPropertyBlock();
+            block.SetFloat("_BG_GlassT", FacesFrontOrBack(r) ? Cfg.LightingGlassFrontTransmission.Value : Cfg.LightingGlassSideTransmission.Value);
+            r.SetPropertyBlock(block);
+            return true;
+        }
 
         internal static void Manter()
         {
@@ -57,6 +104,16 @@ namespace BetterGraphics
 
         static void Camadas(Renderer r, Material vidro, bool janela)
         {
+            if (!janela && PhysicalGlass(r, vidro))
+            {
+                _renderers[r.Pointer] = r;
+                if (Cfg.VidroSemSombra.Value)
+                {
+                    if (!_sombraOrig.ContainsKey(r.Pointer)) _sombraOrig[r.Pointer] = r.shadowCastingMode;
+                    r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                }
+                return;
+            }
             var lista = new List<Material>();
             var veu = Veu(vidro, !janela);
             if (veu != null) lista.Add(veu);
@@ -119,6 +176,9 @@ namespace BetterGraphics
             Texture tex = sonda != null ? sonda.realtimeTexture : null;
 
             // Seco: o véu soma o fumê (passa t da luz, depois o véu de reflexo). Molhado: o fumê vem do _Color.
+            // De dentro, a sonda do salão vê as janelas claras e o para-brisa mostrava um fantasma do interior; o que fica
+            // atrás do para-brisa de verdade (painel, colunas) é escuro.
+            Shader.SetGlobalFloat("_BG_GlassReflect", dentro ? Mathf.Clamp01(Cfg.LightingGlassInsideReflection.Value) : 1f);
             float aSeco = R(1f - (1f - a) * t);
             foreach (var v in _veus.Values) if (v != null) Cor(v, "_Color", new Color(0f, 0f, 0f, _veusSecos.Contains(v.Pointer) ? aSeco : a));
             if (_camada != null)
@@ -148,8 +208,13 @@ namespace BetterGraphics
                 {
                     if (r == null) continue;
                     var orig = new List<Material>();
-                    foreach (var m in r.sharedMaterials) if (!Nosso(m)) orig.Add(m);
+                    foreach (var m in r.sharedMaterials)
+                    {
+                        if (m != null && _glassOriginal.TryGetValue(m.Pointer, out var game) && game != null) orig.Add(game);
+                        else if (!Nosso(m)) orig.Add(m);
+                    }
                     r.sharedMaterials = orig.ToArray();
+                    r.SetPropertyBlock(null);
                     if (_sombraOrig.TryGetValue(r.Pointer, out var sm)) r.shadowCastingMode = sm;
                 }
                 catch { }
