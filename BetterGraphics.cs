@@ -299,7 +299,7 @@ namespace BetterGraphics
 
         internal static MelonPreferences_Entry<bool> RainGlassEnabled, WiperActive, RainFallEnabled, RainCollision, LightingCustomDeferred, LightingPhysicalFalloff, LightingCustomReflections, LightingPhysicalGlass;
         internal static MelonPreferences_Entry<float> LightingRangeMultiplier, LightingBrightness, LightingStreetlightKelvin,
-            LightingGlassSideTransmission, LightingGlassFrontTransmission, LightingGlassInsideReflection;
+            LightingGlassSideTransmission, LightingGlassFrontTransmission, LightingGlassInsideReflection, LightingGlassInsideTransmission;
         internal static MelonPreferences_Entry<int> LightingShadowedStreetlights;
         internal static MelonPreferences_Entry<float[]> RainWindVelocity;
         internal static MelonPreferences_Entry<float> RainIntensity, RainGlobalWetness, RainAirHumidity, RainParticleDensity, RainTerminalVelocity, RainMotionBlurStretch;
@@ -319,6 +319,7 @@ namespace BetterGraphics
             LightingPhysicalGlass = l.CreateEntry("physical_glass", true, "Vidro dos veículos com Fresnel de verdade (espelho de lado, transparente de frente) no lugar do véu + reflexo somado");
             LightingGlassSideTransmission = l.CreateEntry("glass_side_transmission", 0.3f, "Luz que atravessa as janelas laterais (fumê de ônibus urbano: 0.25 a 0.4)");
             LightingGlassFrontTransmission = l.CreateEntry("glass_front_transmission", 0.85f, "Luz que atravessa o para-brisa e os vidros de frente e trás");
+            LightingGlassInsideTransmission = l.CreateEntry("glass_inside_transmission", 0.9f, "Luz que atravessa os vidros vista de dentro do ônibus (o fumê quase não escurece a vista de dentro)");
             LightingGlassInsideReflection = l.CreateEntry("glass_inside_reflection", 0.35f, "Reflexo dos vidros visto de dentro do ônibus (1 = o da sonda do salão; menos = para-brisa limpo)");
             LightingCustomReflections = l.CreateEntry("custom_reflections", true, "Reflexos deferred próprios: energia certa, oclusão especular e reflexo do céu só onde o ponto enxerga o céu");
             LightingShadowedStreetlights = l.CreateEntry("shadowed_streetlights", 2, "Quantos postes perto da câmera projetam sombra (cada um custa um mapa de sombra cúbico)");

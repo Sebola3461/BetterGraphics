@@ -179,6 +179,8 @@ namespace BetterGraphics
             // De dentro, a sonda do salão vê as janelas claras e o para-brisa mostrava um fantasma do interior; o que fica
             // atrás do para-brisa de verdade (painel, colunas) é escuro.
             Shader.SetGlobalFloat("_BG_GlassReflect", dentro ? Mathf.Clamp01(Cfg.LightingGlassInsideReflection.Value) : 1f);
+            Shader.SetGlobalFloat("_BG_GlassCamInside", dentro ? 1f : 0f);
+            Shader.SetGlobalFloat("_BG_GlassInsideT", Mathf.Clamp01(Cfg.LightingGlassInsideTransmission.Value));
             float aSeco = R(1f - (1f - a) * t);
             foreach (var v in _veus.Values) if (v != null) Cor(v, "_Color", new Color(0f, 0f, 0f, _veusSecos.Contains(v.Pointer) ? aSeco : a));
             if (_camada != null)

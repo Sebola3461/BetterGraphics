@@ -31,6 +31,8 @@ Shader "BetterGraphics/VehicleGlass"
 
             float4 _Color;
             float _BG_GlassT;                // transmissão deste vidro (por objeto)
+            float _BG_GlassInsideT;          // transmissão mínima com a câmera dentro do veículo (o fumê quase some)
+            float _BG_GlassCamInside;
             float _BG_GlassReflect;          // escala do reflexo (1 = físico)
 
             struct v2f
@@ -72,7 +74,10 @@ Shader "BetterGraphics/VehicleGlass"
                 float d = NoH * NoH * (a2 - 1.0) + 1.0;
                 float sun = a2 / (UNITY_PI * d * d) * 0.25 * NoL;
 
-                float T = _BG_GlassT * dot(_Color.rgb, float3(0.333, 0.333, 0.333));
+                float T = _BG_GlassT;
+                // De dentro o fumê quase não escurece a vista: o olho está adaptado à rua clara.
+                if (_BG_GlassCamInside > 0.5) T = max(T, _BG_GlassInsideT);
+                T *= dot(_Color.rgb, float3(0.333, 0.333, 0.333));
 
                 float3 rgb = (env + _LightColor0.rgb * sun) * Rpane * _BG_GlassReflect;
                 return float4(rgb, (1.0 - Rpane) * T);
