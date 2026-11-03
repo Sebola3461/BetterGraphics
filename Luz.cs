@@ -79,6 +79,7 @@ namespace BetterGraphics
             sky ??= Sky;
             if (sky == null) return; // menus: sem Enviro, sem mexer na luz
             Ambiente(sky);
+            PhysicalSky.DriveSun(sky);
             Sol();
             Atmosfera(sky);
             PhysicalSky.AfterEnviro(sky);

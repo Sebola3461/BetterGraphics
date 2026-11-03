@@ -81,6 +81,52 @@ namespace BetterGraphics
             fs.skyFogIntensity = 0f;
         }
 
+        // Mesmas constantes do Atmosphere.cginc (km): a luz do sol na cena é a do topo da atmosfera vezes o que passa dela.
+        static readonly Vector3 RayleighScattering = new(5.802e-3f, 13.558e-3f, 33.1e-3f);
+        static readonly Vector3 OzoneAbsorption = new(0.650e-3f, 1.881e-3f, 0.085e-3f);
+        const float RGround = 6360f, RTop = 6460f, MieExtinction = 4.44e-3f;
+        static Vector3 _sunColor = Vector3.one;
+        static float _sunIntensity;
+
+        // Transmitância do topo da atmosfera até a câmera na direção do sol (0 com o sol atrás da Terra).
+        static Vector3 SunTransmittance(float mu, float aerosol)
+        {
+            float r = RGround + CameraHeightKm;
+            float b = r * mu, disc = b * b - (r * r - RGround * RGround);
+            if (disc > 0f && -b - Mathf.Sqrt(disc) > 0f) return Vector3.zero;
+            float t = -b + Mathf.Sqrt(b * b - (r * r - RTop * RTop));
+            const int N = 48;
+            float dt = t / N;
+            Vector3 depth = Vector3.zero;
+            for (int i = 0; i < N; i++)
+            {
+                float s = (i + 0.5f) * dt;
+                float h = Mathf.Sqrt(r * r + s * s + 2f * r * mu * s) - RGround;
+                float ozone = Mathf.Max(0f, 1f - Mathf.Abs(h - 25f) / 15f);
+                depth += (RayleighScattering * Mathf.Exp(-h / 8f) + Vector3.one * (MieExtinction * aerosol * Mathf.Exp(-h / 1.2f)) + OzoneAbsorption * ozone) * dt;
+            }
+            return new Vector3(Mathf.Exp(-depth.x), Mathf.Exp(-depth.y), Mathf.Exp(-depth.z));
+        }
+
+        // Luz do sol com a cor e a força que sobram depois da atmosfera: branca ao meio-dia, dourada e fraca no fim da
+        // tarde. Roda antes da Luz.Sol (que multiplica pela força do mod e corta na chuva). À noite a luz é a lua do Enviro.
+        internal static void DriveSun(Il2Cpp.EnviroSky sky)
+        {
+            if (!Cfg.SkyPhysical.Value || !Cfg.SkyPhysicalSun.Value || _noShader || sky == null || sky.isNight) return;
+            var c = sky.Components;
+            var light = c != null && c.DirectLight != null ? c.DirectLight.GetComponent<Light>() : null;
+            if (light == null) return;
+            var dir = SunDirection(sky);
+            var T = SunTransmittance(dir.y, Mathf.Max(0f, Cfg.SkyAerosol.Value));
+            // O disco (0,27°) entra no horizonte aos poucos.
+            T *= Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(-0.0047f, 0.0047f, dir.y));
+            float max = Mathf.Max(T.x, Mathf.Max(T.y, T.z));
+            _sunColor = max > 1e-6f ? T / max : Vector3.one;
+            _sunIntensity = Mathf.Max(0f, Cfg.SkySunIntensity.Value) * max;
+            light.color = new Color(_sunColor.x, _sunColor.y, _sunColor.z, 1f);
+            light.intensity = _sunIntensity;
+        }
+
         // Objeto Sun do Enviro: segue o sol também à noite (a luz direcional vira a lua).
         static Vector3 SunDirection(Il2Cpp.EnviroSky sky)
         {
@@ -154,6 +200,6 @@ namespace BetterGraphics
         internal static void SceneChanged() { _enviroSky = null; _skyFogSaved = false; }
 
         internal static string State() =>
-            $"céu: {(_noShader ? "sem shader" : RenderSettings.skybox == _skyMat && _skyMat != null ? "físico" : "Enviro")}, aerossol {Cfg.SkyAerosol.Value:0.0}, sol {Cfg.SkySunIntensity.Value:0.00}, skybox {(RenderSettings.skybox != null ? RenderSettings.skybox.name : "-")}";
+            $"céu: {(_noShader ? "sem shader" : RenderSettings.skybox == _skyMat && _skyMat != null ? "físico" : "Enviro")}, aerossol {Cfg.SkyAerosol.Value:0.0}, sol no topo {Cfg.SkySunIntensity.Value:0.00}, sol na cena {_sunIntensity:0.000} cor ({_sunColor.x:0.000}, {_sunColor.y:0.000}, {_sunColor.z:0.000}), skybox {(RenderSettings.skybox != null ? RenderSettings.skybox.name : "-")}";
     }
 }
