@@ -308,8 +308,8 @@ namespace BetterGraphics
             LightingGlassSideTransmission, LightingGlassFrontTransmission, LightingGlassInsideReflection, LightingGlassInsideTransmission,
             LightingClearCoatSmoothness, LightingClearCoatStrength, LightingPaintBaseSmoothness;
         internal static MelonPreferences_Entry<int> LightingShadowedStreetlights;
-        internal static MelonPreferences_Entry<bool> SkyPhysical, SkyPhysicalSun;
-        internal static MelonPreferences_Entry<float> SkyAerosol, SkyMieG, SkyGroundAlbedo, SkySunIntensity, SkySunDiskMax, SkyCityGlow, SkyMoonAngle, SkyMoonGlow;
+        internal static MelonPreferences_Entry<bool> SkyPhysical, SkyPhysicalSun, SkyAerialFog;
+        internal static MelonPreferences_Entry<float> SkyAerosol, SkyMieG, SkyGroundAlbedo, SkySunIntensity, SkySunDiskMax, SkyCityGlow, SkyMoonAngle, SkyMoonGlow, SkyHazeHeight, SkyFogMatch;
         internal static MelonPreferences_Entry<float[]> RainWindVelocity;
         internal static MelonPreferences_Entry<float> RainIntensity, RainGlobalWetness, RainAirHumidity, RainParticleDensity, RainTerminalVelocity, RainMotionBlurStretch;
         internal static MelonPreferences_Entry<int[]> RainGridResolution;
@@ -349,6 +349,9 @@ namespace BetterGraphics
             SkySunIntensity = k.CreateEntry("sun_intensity", 1.6f, "Sol no topo da atmosfera, na escala da luz direcional (o do chão é este vezes o que passa pela atmosfera)");
             SkySunDiskMax = k.CreateEntry("sun_disk_max", 400f, "Teto do brilho do disco do sol (o real estoura o bloom e pisca)");
             SkyCityGlow = k.CreateEntry("city_glow", 0.02f, "Brilho da cidade no céu à noite (poluição luminosa)");
+            SkyAerialFog = k.CreateEntry("aerial_fog", true, "Névoa própria por perspectiva aérea (o longe ganha a cor do céu naquela direção) no lugar da névoa do Enviro");
+            SkyHazeHeight = k.CreateEntry("haze_height", 0.6f, "Altura da camada de neblina da cidade e do clima (km)");
+            SkyFogMatch = k.CreateEntry("fog_density", 1f, "Multiplica a densidade de névoa do clima do Enviro (1 = a mesma visibilidade da névoa dele)");
             SkyMoonAngle = k.CreateEntry("moon_angle", 0.035f, "Meio ângulo do disco da lua no céu (rad; a real é 0.0045, o Enviro exagera para ela aparecer)");
             SkyMoonGlow = k.CreateEntry("moon_glow", 0.002f, "Halo da lua (luz dela espalhada no ar)");
         }

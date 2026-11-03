@@ -16,6 +16,8 @@ float _BG_AtmMieG;             // anisotropia do Mie (0,8: brilho forte em volta
 float _BG_AtmGroundAlbedo;     // albedo médio do chão visto de cima (rebate para o céu)
 float _BG_AtmCameraHeight;     // km acima do chão
 float3 _BG_AtmSunDir;          // direção do sol (vale com ele abaixo do horizonte)
+float _BG_AtmHaze;             // neblina urbana / do clima: extinção no chão (por km), a do Enviro
+float _BG_AtmHazeHeight;       // altura de escala da neblina (km)
 
 static const float3 BG_RayleighScattering = float3(5.802, 13.558, 33.1) * 1e-3;
 static const float BG_RayleighHeight = 8.0;
@@ -37,9 +39,11 @@ BGMedium BGSampleMedium(float h)
     float dR = exp(-h / BG_RayleighHeight);
     float dM = exp(-h / BG_MieHeight) * _BG_AtmAerosol;
     float dO = max(0.0, 1.0 - abs(h - 25.0) / 15.0);   // camada de ozônio em tenda, centro a 25 km
+    // Neblina perto do chão (poluição, umidade, chuva): espalha como o Mie e absorve 10% (fuligem da cidade).
+    float haze = _BG_AtmHaze * exp(-h / max(_BG_AtmHazeHeight, 0.01));
     m.scatR = BG_RayleighScattering * dR;
-    m.scatM = BG_MieScattering * dM;
-    m.ext = m.scatR + (BG_MieScattering + BG_MieAbsorption) * dM + BG_OzoneAbsorption * dO;
+    m.scatM = BG_MieScattering * dM + haze * 0.9;
+    m.ext = m.scatR + (BG_MieScattering + BG_MieAbsorption) * dM + haze + BG_OzoneAbsorption * dO;
     return m;
 }
 

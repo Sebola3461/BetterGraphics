@@ -1,19 +1,29 @@
+using System.Runtime.InteropServices;
 using UnityEngine;
 
 namespace BetterGraphics
 {
     // Céu físico (shaders AtmosphereLut e PhysicalSky) no lugar do skybox do Enviro. Roda logo depois de cada Update do
     // Enviro (pela Luz): ele não volta a pôr o céu dele por cima, e a direção do sol é a do quadro.
-    // A transmitância e o espalhamento múltiplo só mudam com o aerossol, o Mie e o albedo do chão; a vista do céu
-    // depende do sol e é refeita todo quadro (192x108, barata).
-    internal static class PhysicalSky
+    // A transmitância e o espalhamento múltiplo só mudam com o aerossol, a neblina, o Mie e o albedo do chão; a vista
+    // do céu e a tabela da névoa dependem do sol e são refeitas todo quadro (pequenas, baratas).
+    // A neblina é a densidade de névoa que o Enviro calcula para o clima (RenderSettings.fogDensity x a intensidade de
+    // distância dele): a visibilidade de cada clima fica a mesma, e a cor passa a sair da atmosfera.
+    internal static unsafe class PhysicalSky
     {
+        // RenderSettings.ambientProbe foi removido do C# pelo IL2CPP; a função nativa continua no motor.
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate void DProbe(float* sh);
+        static DProbe _getProbe;
+        static bool _noProbe;
+        static readonly float[] _probe = new float[27];   // 9 coeficientes de R, depois de G, depois de B
         static Material _lutMat, _skyMat, _enviroSky;
-        static RenderTexture _transmittance, _multiScat, _skyView;
+        static RenderTexture _transmittance, _multiScat, _skyView, _aerial;
         static bool _noShader;
-        static float _builtAerosol = -1f, _builtMieG = -1f, _builtAlbedo = -1f;
+        static float _builtAerosol = -1f, _builtMieG = -1f, _builtAlbedo = -1f, _builtHaze = -1f;
+        static float _haze;
         static bool _skyFogSaved;
         static float _origSkyFog;
+        static bool _origDistanceFog, _origHeightFog;
         static int _frame = -1;
 
         const float CameraHeightKm = 0.05f;
@@ -24,12 +34,13 @@ namespace BetterGraphics
             if (_skyMat != null) return true;
             var lut = Pacote.Shader("AtmosphereLut");
             var sky = Pacote.Shader("PhysicalSky");
-            if (lut == null || sky == null) { _noShader = true; return false; }
+            if (lut == null || sky == null || !AerialFog.Prepare()) { _noShader = true; return false; }
             _lutMat = new Material(lut) { hideFlags = HideFlags.DontUnloadUnusedAsset };
             _skyMat = new Material(sky) { name = "BetterGraphics_PhysicalSky", hideFlags = HideFlags.DontUnloadUnusedAsset };
             _transmittance = Lut(256, 64, "BetterGraphics_AtmTransmittance");
             _multiScat = Lut(32, 32, "BetterGraphics_AtmMultiScat");
             _skyView = Lut(192, 108, "BetterGraphics_AtmSkyView");
+            _aerial = Lut(2048, 32, "BetterGraphics_AtmAerial");
             return true;
         }
 
@@ -50,7 +61,7 @@ namespace BetterGraphics
             // A Luz chama depois do Update e do LateUpdate do Enviro: as tabelas uma vez por quadro, o skybox nas duas.
             if (Time.frameCount == _frame) { if (RenderSettings.skybox != _skyMat) RenderSettings.skybox = _skyMat; return; }
             _frame = Time.frameCount;
-            if (!_transmittance.IsCreated()) { _transmittance.Create(); _multiScat.Create(); _skyView.Create(); _builtAerosol = -1f; }
+            if (!_transmittance.IsCreated()) { _transmittance.Create(); _multiScat.Create(); _skyView.Create(); _aerial.Create(); _builtAerosol = -1f; }
 
             var cur = RenderSettings.skybox;
             if (cur != null && cur != _skyMat) _enviroSky = cur;
@@ -60,26 +71,65 @@ namespace BetterGraphics
             Shader.SetGlobalFloat("_BG_AtmGroundAlbedo", Mathf.Clamp01(Cfg.SkyGroundAlbedo.Value));
             Shader.SetGlobalFloat("_BG_AtmCameraHeight", CameraHeightKm);
             Shader.SetGlobalVector("_BG_AtmSunDir", SunDirection(sky));
+            var fs = sky.fogSettings;
+            _haze = Mathf.Max(0f, RenderSettings.fogDensity * fs.distanceFogIntensity * 1000f * Cfg.SkyFogMatch.Value);
+            Shader.SetGlobalFloat("_BG_AtmHaze", _haze);
+            Shader.SetGlobalFloat("_BG_AtmHazeHeight", Mathf.Max(0.01f, Cfg.SkyHazeHeight.Value));
             Shader.SetGlobalTexture("_BG_TransmittanceLut", _transmittance);
             Shader.SetGlobalTexture("_BG_MultiScatLut", _multiScat);
             Shader.SetGlobalTexture("_BG_SkyViewLut", _skyView);
 
-            if (_builtAerosol != Cfg.SkyAerosol.Value || _builtMieG != Cfg.SkyMieG.Value || _builtAlbedo != Cfg.SkyGroundAlbedo.Value)
+            // A neblina muda devagar com o clima: refaz as tabelas fixas quando ela anda mais de 1%.
+            bool hazeMoved = Mathf.Abs(_haze - _builtHaze) > 0.01f * Mathf.Max(_builtHaze, 0.01f);
+            if (hazeMoved || _builtAerosol != Cfg.SkyAerosol.Value || _builtMieG != Cfg.SkyMieG.Value || _builtAlbedo != Cfg.SkyGroundAlbedo.Value)
             {
                 Graphics.Blit(null, _transmittance, _lutMat, 0);
                 Graphics.Blit(null, _multiScat, _lutMat, 1);
-                _builtAerosol = Cfg.SkyAerosol.Value; _builtMieG = Cfg.SkyMieG.Value; _builtAlbedo = Cfg.SkyGroundAlbedo.Value;
+                _builtAerosol = Cfg.SkyAerosol.Value; _builtMieG = Cfg.SkyMieG.Value; _builtAlbedo = Cfg.SkyGroundAlbedo.Value; _builtHaze = _haze;
             }
             Graphics.Blit(null, _skyView, _lutMat, 2);
 
             SetSkyMaterial(sky);
             if (RenderSettings.skybox != _skyMat) RenderSettings.skybox = _skyMat;
 
+            if (!_skyFogSaved) { _skyFogSaved = true; _origSkyFog = fs.skyFogIntensity; _origDistanceFog = fs.distanceFog; _origHeightFog = fs.heightFog; }
             // A névoa do Enviro pintava o céu dele perto do horizonte; com a atmosfera própria o céu já tem a dele.
-            var fs = sky.fogSettings;
-            if (!_skyFogSaved) { _skyFogSaved = true; _origSkyFog = fs.skyFogIntensity; }
             fs.skyFogIntensity = 0f;
+            bool fog = Cfg.SkyAerialFog.Value;
+            if (fog)
+            {
+                Graphics.Blit(null, _aerial, AerialFog.Material, 0);
+                Shader.SetGlobalTexture("_BG_AerialLut", _aerial);
+            }
+            if (fog) SetFogAmbient();
+            fs.distanceFog = fog ? false : _origDistanceFog;
+            fs.heightFog = fog ? false : _origHeightFog;
+            AerialFog.Frame(fog);
         }
+
+        // Média da sonda ambiente em todas as direções (só o termo constante sobrevive à média) e a fração da extinção
+        // perto do chão que é neblina.
+        static void SetFogAmbient()
+        {
+            var amb = Vector3.zero;
+            if (!_noProbe)
+            {
+                _getProbe ??= Pacote.Funcao<DProbe>("UnityEngine.RenderSettings::get_ambientProbe_Injected");
+                if (_getProbe == null) _noProbe = true;
+                else
+                {
+                    fixed (float* f = _probe) _getProbe(f);
+                    amb = new Vector3(_probe[0], _probe[9], _probe[18]);
+                }
+            }
+            Shader.SetGlobalVector("_BG_FogAmbient", amb);
+            float clean = 0.0331f + MieExtinction * Mathf.Max(0f, Cfg.SkyAerosol.Value);
+            Shader.SetGlobalFloat("_BG_FogHazeShare", _haze / (_haze + clean));
+        }
+
+        // Sol que ilumina a atmosfera: o do topo, cortado pela chuva como a luz direcional (a névoa da chuva é cinza
+        // escura, iluminada pelas nuvens, não pelo sol aberto).
+        static float SunScale() => Mathf.PI * Mathf.Max(0f, Cfg.SkySunIntensity.Value) * (1f - 0.7f * Luz.ChuvaAgora());
 
         // Mesmas constantes do Atmosphere.cginc (km): a luz do sol na cena é a do topo da atmosfera vezes o que passa dela.
         static readonly Vector3 RayleighScattering = new(5.802e-3f, 13.558e-3f, 33.1e-3f);
@@ -103,7 +153,8 @@ namespace BetterGraphics
                 float s = (i + 0.5f) * dt;
                 float h = Mathf.Sqrt(r * r + s * s + 2f * r * mu * s) - RGround;
                 float ozone = Mathf.Max(0f, 1f - Mathf.Abs(h - 25f) / 15f);
-                depth += (RayleighScattering * Mathf.Exp(-h / 8f) + Vector3.one * (MieExtinction * aerosol * Mathf.Exp(-h / 1.2f)) + OzoneAbsorption * ozone) * dt;
+                float mie = MieExtinction * aerosol * Mathf.Exp(-h / 1.2f) + _haze * Mathf.Exp(-h / Mathf.Max(0.01f, Cfg.SkyHazeHeight.Value));
+                depth += (RayleighScattering * Mathf.Exp(-h / 8f) + Vector3.one * mie + OzoneAbsorption * ozone) * dt;
             }
             return new Vector3(Mathf.Exp(-depth.x), Mathf.Exp(-depth.y), Mathf.Exp(-depth.z));
         }
@@ -139,12 +190,16 @@ namespace BetterGraphics
         static void SetSkyMaterial(Il2Cpp.EnviroSky sky)
         {
             var m = _skyMat;
-            m.SetFloat("_BG_SkyScale", Mathf.PI * Mathf.Max(0f, Cfg.SkySunIntensity.Value));
+            m.SetFloat("_BG_SkyScale", SunScale());
+            Shader.SetGlobalFloat("_BG_AtmSunScale", SunScale());
             m.SetFloat("_BG_SunDiskMax", Mathf.Max(0f, Cfg.SkySunDiskMax.Value));
             float glow = Mathf.Max(0f, Cfg.SkyCityGlow.Value);
-            m.SetVector("_BG_SkyCityGlow", new Vector4(glow * 0.85f, glow * 0.95f, glow * 1.1f, 0f));
+            var glowColor = new Vector4(glow * 0.85f, glow * 0.95f, glow * 1.1f, 0f);
+            m.SetVector("_BG_SkyCityGlow", glowColor);
+            Shader.SetGlobalVector("_BG_SkyCityGlow", glowColor);
             var w = sky.currentWeatherSkyMod;
             m.SetVector("_BG_SkyWeather", new Vector4(w.r, w.g, w.b, w.a));
+            Shader.SetGlobalVector("_BG_SkyWeather", new Vector4(w.r, w.g, w.b, w.a));
 
             // Estrelas, galáxia e lua do Enviro: texturas do material dele e valores que ele põe nos globais.
             var e = _enviroSky;
@@ -193,13 +248,19 @@ namespace BetterGraphics
         internal static void Restore(Il2Cpp.EnviroSky sky)
         {
             if (_enviroSky != null && RenderSettings.skybox == _skyMat) RenderSettings.skybox = _enviroSky;
-            if (_skyFogSaved && sky != null) sky.fogSettings.skyFogIntensity = _origSkyFog;
+            if (_skyFogSaved && sky != null)
+            {
+                sky.fogSettings.skyFogIntensity = _origSkyFog;
+                sky.fogSettings.distanceFog = _origDistanceFog;
+                sky.fogSettings.heightFog = _origHeightFog;
+            }
             _skyFogSaved = false;
+            AerialFog.Remove();
         }
 
-        internal static void SceneChanged() { _enviroSky = null; _skyFogSaved = false; }
+        internal static void SceneChanged() { _enviroSky = null; _skyFogSaved = false; AerialFog.Remove(); }
 
         internal static string State() =>
-            $"céu: {(_noShader ? "sem shader" : RenderSettings.skybox == _skyMat && _skyMat != null ? "físico" : "Enviro")}, aerossol {Cfg.SkyAerosol.Value:0.0}, sol no topo {Cfg.SkySunIntensity.Value:0.00}, sol na cena {_sunIntensity:0.000} cor ({_sunColor.x:0.000}, {_sunColor.y:0.000}, {_sunColor.z:0.000}), skybox {(RenderSettings.skybox != null ? RenderSettings.skybox.name : "-")}";
+            $"céu: {(_noShader ? "sem shader" : RenderSettings.skybox == _skyMat && _skyMat != null ? "físico" : "Enviro")}, aerossol {Cfg.SkyAerosol.Value:0.0}, neblina {_haze:0.000}/km (ambiente {_probe[0]:0.000} {_probe[9]:0.000} {_probe[18]:0.000}), sol no topo {Cfg.SkySunIntensity.Value:0.00}, sol na cena {_sunIntensity:0.000} cor ({_sunColor.x:0.000}, {_sunColor.y:0.000}, {_sunColor.z:0.000}), skybox {(RenderSettings.skybox != null ? RenderSettings.skybox.name : "-")}";
     }
 }

@@ -215,6 +215,8 @@ namespace BetterGraphics
                 case "vidros": Resp(Vidros.Estado()); return;
                 case "verniz": Resp(ClearCoat.State()); return;
                 case "ceufis": Resp(PhysicalSky.State()); return;
+                case "fogdebug": Shader.SetGlobalFloat("_BG_FogDebug", F(p[1])); Resp("ok " + l); return; // 1 profundidade, 2 distância, 3 transmitância
+                case "neblina": Resp($"neblina: unity fog {RenderSettings.fog} modo {RenderSettings.fogMode} densidade {RenderSettings.fogDensity:0.000000} cor {RenderSettings.fogColor} | enviro dist {sky?.fogSettings.distanceFogIntensity:0.###} max {sky?.fogSettings.maximumFogDensity:0.###} altura {sky?.fogSettings.heightFogIntensity:0.###}"); return;
                 case "skymat": // propriedades do material do céu atual (shader, texturas, cores, números)
                     {
                         var sm = RenderSettings.skybox;
