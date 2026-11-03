@@ -72,6 +72,7 @@ namespace BetterGraphics
             if (!Ativo) return;
             if (!Application.runInBackground) Application.runInBackground = true;
             QuadroStats();
+            MonitorStep();
             // Outros mods (PBSLoaderCommonInterface) religam a própria interface: mantém escondida enquanto pedido.
             if (_uiOculta && Time.frameCount % 15 == 0) Ui(false);
             if (_fpsInicio >= 0f) { _fpsQuadros++; if (Time.unscaledTime - _fpsInicio >= 3f) { Resp($"fps {_fpsQuadros / (Time.unscaledTime - _fpsInicio):0.0}"); _fpsInicio = -1f; } else return; }
@@ -111,6 +112,44 @@ namespace BetterGraphics
         }
 
         static float F(string s) => float.Parse(s, Inv);
+
+        // Monitor de saltos (monitor S): grava por quadro o que muda a imagem inteira de uma vez e, no fim, lista os quadros
+        // em que algum valor pulou. Serve para achar clarões de um quadro só.
+        static float _monAte = -1f;
+        static readonly List<float[]> _mon = new();
+        static readonly string[] MonNames = { "dt ms", "dentro", "ceu", "ambiente", "reflexo", "sol", "exposicao", "camx", "camy", "camz" };
+
+        static void MonitorStep()
+        {
+            if (_monAte < 0f) return;
+            var cam = Pos.Cam;
+            var bus = Veiculo.Raiz();
+            var local = cam != null && bus != null ? bus.InverseTransformPoint(cam.transform.position) : Vector3.zero;
+            var sun = RenderSettings.sun;
+            _mon.Add(new[] { Time.unscaledDeltaTime * 1000f, cam != null && Veiculo.Dentro(cam.transform.position) ? 1f : 0f, Ceu.Fator(),
+                RenderSettings.ambientIntensity, RenderSettings.reflectionIntensity, sun != null ? sun.intensity : 0f, Pos.PostExposureNow,
+                local.x, local.y, local.z });
+            if (Time.unscaledTime < _monAte) return;
+            _monAte = -1f;
+            var sb = new System.Text.StringBuilder($"monitor: {_mon.Count} quadros\n");
+            int eventos = 0;
+            for (int i = 1; i < _mon.Count && eventos < 40; i++)
+            {
+                var a = _mon[i - 1]; var b = _mon[i];
+                var mudou = new List<string>();
+                for (int k = 1; k <= 6; k++)
+                {
+                    float d = Mathf.Abs(b[k] - a[k]);
+                    if (d > 0.02f * Mathf.Max(Mathf.Abs(a[k]), 0.05f)) mudou.Add($"{MonNames[k]} {a[k]:0.###}->{b[k]:0.###}");
+                }
+                if (b[0] > 50f) mudou.Add($"quadro longo {b[0]:0} ms");
+                if (mudou.Count == 0) continue;
+                eventos++;
+                sb.AppendLine($"  q{i} cam local ({b[7]:0.00}, {b[8]:0.00}, {b[9]:0.00}): {string.Join(", ", mudou)}");
+            }
+            if (eventos == 0) sb.Append("  nenhum salto");
+            Resp(sb.ToString());
+        }
 
         // Estatística de quadros: tempos de quadro e o pior tempo de cada módulo no período.
         static float _qAte = -1f; static readonly List<float> _quadros = new();
@@ -367,6 +406,7 @@ namespace BetterGraphics
                     }
                     Resp(sbr.ToString()); return;
                 case "fps": _fpsInicio = Time.unscaledTime; _fpsQuadros = 0; return;
+                case "monitor": _mon.Clear(); _monAte = Time.unscaledTime + F(p[1]); _ate = _monAte + 0.1f; return;
                 case "quadros": _quadros.Clear(); _modulos.Clear(); _qAte = Time.unscaledTime + F(p[1]); _ate = _qAte + 0.1f; return;
                 case "info": Resp(Info()); return;
                 case "sair": Resp("saindo"); Application.Quit(); return;

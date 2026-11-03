@@ -254,6 +254,8 @@ namespace BetterGraphics
         static void Set(ScreenSpaceReflectionPresetParameter p, ScreenSpaceReflectionPreset v) { p.overrideState = true; Escrever(p, (int)v); }
         static void Set(ScreenSpaceReflectionResolutionParameter p, ScreenSpaceReflectionResolution v) { p.overrideState = true; Escrever(p, (int)v); }
 
+        internal static float PostExposureNow => _cor != null ? _cor.postExposure.value : 0f;
+
         internal static string Estado()
         {
             var sb = new System.Text.StringBuilder("vol: ");
