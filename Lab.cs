@@ -464,6 +464,35 @@ namespace BetterGraphics
                         if (frente.sqrMagnitude > 1e-4f) busP.rotation = Quaternion.LookRotation(frente.normalized, Vector3.up);
                         Resp($"ok irparada {i} {paradasMapa[i]} em {alvo}"); return;
                     }
+                case "matprops": // matprops TEXTO: propriedades dos materiais do primeiro renderer cujo nome contém TEXTO
+                    {
+                        Renderer alvoR = null;
+                        foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>()) if (r.name.Contains(p[1])) { alvoR = r; break; }
+                        if (alvoR == null) { Resp("matprops: nenhum"); return; }
+                        var sbM = new System.Text.StringBuilder($"matprops {alvoR.name}:" + System.Environment.NewLine);
+                        foreach (var m in alvoR.sharedMaterials)
+                        {
+                            if (m == null || m.shader == null) continue;
+                            sbM.AppendLine($"  {m.name} [{m.shader.name}]");
+                            for (int i = 0; i < m.shader.GetPropertyCount(); i++)
+                            {
+                                string pn = m.shader.GetPropertyName(i);
+                                var pt = m.shader.GetPropertyType(i);
+                                string pv = pt == UnityEngine.Rendering.ShaderPropertyType.Color ? m.GetColor(pn).ToString()
+                                    : pt == UnityEngine.Rendering.ShaderPropertyType.Texture ? (m.GetTexture(pn) != null ? m.GetTexture(pn).name : "-")
+                                    : pt == UnityEngine.Rendering.ShaderPropertyType.Vector ? m.GetVector(pn).ToString() : m.GetFloat(pn).ToString("0.###");
+                                sbM.AppendLine($"    {pn} = {pv}");
+                            }
+                        }
+                        Resp(sbM.ToString()); return;
+                    }
+                case "matcor": // matcor TEXTO PROP R G B A: cor em todos os materiais de renderers cujo nome contém TEXTO
+                    {
+                        int nCor = 0; var cor = new Color(F(p[3]), F(p[4]), F(p[5]), F(p[6]));
+                        foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>())
+                            if (r.name.Contains(p[1])) foreach (var m in r.sharedMaterials) if (m != null && m.HasProperty(p[2])) { m.SetColor(p[2], cor); nCor++; }
+                        Resp($"ok matcor {nCor}"); return;
+                    }
                 case "gpu": Resp($"gpu: {SystemInfo.graphicsDeviceName} {SystemInfo.graphicsMemorySize} MB {SystemInfo.graphicsDeviceType} | cpu {SystemInfo.processorType} x{SystemInfo.processorCount} | ram {SystemInfo.systemMemorySize} MB | tela {Screen.width}x{Screen.height} {Screen.fullScreenMode} | vsync {QualitySettings.vSyncCount} alvo {Application.targetFrameRate} | qualidade {QualitySettings.GetQualityLevel()} sombras {QualitySettings.shadows} {QualitySettings.shadowResolution} dist {QualitySettings.shadowDistance} cascatas {QualitySettings.shadowCascades} luzes {QualitySettings.pixelLightCount} msaa {QualitySettings.antiAliasing} lod {QualitySettings.lodBias}"); return;
                 case "res": Screen.SetResolution(int.Parse(p[1]), int.Parse(p[2]), Screen.fullScreenMode); Resp("ok " + l); return; // res L A: muda a resolução (teste de gargalo da GPU)
                 case "fps": _fpsInicio = Time.unscaledTime; _fpsQuadros = 0; return;

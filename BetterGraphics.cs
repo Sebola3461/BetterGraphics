@@ -176,7 +176,7 @@ namespace BetterGraphics
         internal static MelonPreferences_Entry<string> AA, MapaMateriais, Tonemapper;
         internal static MelonPreferences_Entry<int> SombraCascatas, SombraResolucao, LuzesPorPixel, SondaResolucao;
         internal static MelonPreferences_Entry<float> SombraDistancia, AmbienteForca, AmbCeu, AmbHorizonte, AmbChao, SolForca, SombraForca,
-            Exposicao, ExposicaoNoite, ExposicaoMin, ExposicaoMax, Contraste, Saturacao, SaturacaoNoite, TemperaturaNoite, TemperaturaHoraAzul, LuaForca, Temperatura, Bloom, BloomLimiar, AOIntensidade,
+            Exposicao, ExposicaoNoite, ExposicaoMin, ExposicaoMax, Contraste, Saturacao, FolhasSemMapa, SaturacaoNoite, TemperaturaNoite, TemperaturaHoraAzul, LuaForca, Temperatura, Bloom, BloomLimiar, AOIntensidade,
             SondaIntervalo, BrilhoMax, VidroReflexo, VidroReflexoPerto, VidroReflexoDentro, VidroVeu, VidroVeuPerto, VidroTom,
             VolumetricaForca, RaiosSolForca, MapaBrilho, ChaoSeco, ChaoMolhado, CurvaPe, CurvaOmbro, ChaoEscurecer, ChuvaExposicao, CabineExposicao, CabineAmbiente, CabineMedicao, ChaoBaseUmida, ChuvaPneus, ChuvaPocas, ChuvaSarjeta,
             Neblina, CeuOclusaoMin, CeuOclusaoAlcance, LatariaBrilho, LatariaVerniz, CurvaPeAlcance, CurvaPeNoite, CurvaOmbroAlcance, CurvaOmbroAngulo, CabinePe, DofAbertura, DofFocal, ChuvaFrio, JanelaRebate, JanelaForca;
@@ -263,6 +263,7 @@ namespace BetterGraphics
             CabineAmbiente = c.CreateEntry("CabineAmbiente", 1.0f, "Luz ambiente dentro do ônibus (luz que entra pelos vidros e rebate)");
             Contraste = c.CreateEntry("Contraste", 0f, "-100 a 100");
             Saturacao = c.CreateEntry("Saturacao", -22f, "-100 a 100");
+            FolhasSemMapa = c.CreateEntry("FolhasSemMapa", 0.4f, "Cor das folhas do Tree Creator sem mapa de translucidez (1 = original, que acende verde-menta no sol)");
             SaturacaoNoite = c.CreateEntry("SaturacaoNoite", -45f, "Saturação à noite, -100 a 100 (o olho perde cor no escuro; fotos de rua à noite ~0,15)");
             TemperaturaNoite = c.CreateEntry("TemperaturaNoite", 0f, "Branco da câmera à noite (positivo = mais quente): ajusta para a luz dos postes, tira o azul do luar");
             TemperaturaHoraAzul = c.CreateEntry("TemperaturaHoraAzul", -20f, "Branco da câmera na hora azul (sol de 0° a -8°; negativo = mais frio): o céu do anoitecer fica azul como nas fotos");

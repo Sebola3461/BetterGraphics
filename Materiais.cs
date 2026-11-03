@@ -61,8 +61,23 @@ namespace BetterGraphics
 
         // Chamado pela Varredura para cada material de cada renderer novo (ela já percorre a cena aos poucos; uma segunda
         // varredura inteira aqui, a cada 15 s, travava ~60 ms).
+        // Folhas do Tree Creator sem o mapa de translucidez (o Tree Creator gera junto com a árvore; mapas exportados vêm
+        // sem): o shader assume translucidez total e a copa inteira acende como folha contra o sol (verde-menta, o dobro
+        // do brilho das copas nas fotos). A cor escurece junto com a translucidez.
+        static readonly Dictionary<IntPtr, (Material m, Color cor)> _folhas = new();
+
+        static void Folha(Material m)
+        {
+            if (_folhas.ContainsKey(m.Pointer) || !m.HasProperty("_TranslucencyMap") || m.GetTexture("_TranslucencyMap") != null) return;
+            var cor = m.GetColor("_Color");
+            _folhas[m.Pointer] = (m, cor);
+            float k = Mathf.Clamp01(Cfg.FolhasSemMapa.Value);
+            m.SetColor("_Color", new Color(cor.r * k, cor.g * k, cor.b * k, cor.a));
+        }
+
         internal static void Considerar(Renderer r, Material m, string shader)
         {
+            if (shader == "Nature/Tree Creator Leaves" || shader == "Nature/Tree Creator Leaves Fast") Folha(m);
             string modo = Cfg.MapaMateriais.Value;
             if (modo == "original" || _orig.ContainsKey(m.Pointer)) return;
             if (shader != "Standard" || !m.name.StartsWith("basicwhite", StringComparison.Ordinal)) return;
@@ -114,6 +129,8 @@ namespace BetterGraphics
                 catch { }
             }
             _orig.Clear();
+            foreach (var (m, cor) in _folhas.Values) try { if (m != null) m.SetColor("_Color", cor); } catch { }
+            _folhas.Clear();
             _modoAplicado = "";
         }
 
