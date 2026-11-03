@@ -250,7 +250,7 @@ namespace BetterGraphics
             CurvaPeAlcance = c.CreateEntry("CurvaPeAlcance", 0.5f, "Tonemapper Custom: até onde vai o pé (0 a 1)");
             CurvaOmbroAlcance = c.CreateEntry("CurvaOmbroAlcance", 2.2f, "Tonemapper Custom: margem dos claros em EV antes de saturar (curto = branco estoura)");
             CurvaOmbroAngulo = c.CreateEntry("CurvaOmbroAngulo", 0f, "Tonemapper Custom: inclinação final do ombro (0 a 1)");
-            Exposicao = c.CreateEntry("Exposicao", 0.05f, "Compensação de exposição de dia (EV); 0.05 deixa o asfalto ao sol do meio-dia no brilho das fotos (com o branco automático)");
+            Exposicao = c.CreateEntry("Exposicao", -0.15f, "Compensação de exposição de dia (EV); -0.15: um pouco abaixo do asfalto das fotos ao meio-dia (180-190), a pedido, para a manhã não clarear demais");
             ExposicaoNoite = c.CreateEntry("ExposicaoNoite", -0.4f, "Compensação de exposição à noite (EV)");
             ExposicaoNublado = c.CreateEntry("ExposicaoNublado", -0.7f, "Exposição a mais (EV) com o céu fechado de dia (nublado, chuva): dia sombrio como nas fotos");
             ExposicaoMin = c.CreateEntry("ExposicaoMin", -2.9f, "Luminância média mínima considerada (EV100): abaixo disso a cena fica escura de verdade. -2.9 (com o pé de curva da noite) deixa a rua à noite no brilho das fotos de referência");
