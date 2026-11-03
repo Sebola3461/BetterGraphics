@@ -231,7 +231,7 @@ namespace BetterGraphics
             SombraDistancia = c.CreateEntry("SombraDistancia", 180f, "Distância das sombras (m)");
             SombraCascatas = c.CreateEntry("SombraCascatas", 4, "1, 2 ou 4");
             SombraResolucao = c.CreateEntry("SombraResolucao", 3, "0 baixa .. 3 muito alta");
-            LuzesPorPixel = c.CreateEntry("LuzesPorPixel", 8, "Luzes por pixel (faróis, postes)");
+            LuzesPorPixel = c.CreateEntry("LuzesPorPixel", 2, "Luzes por pixel nos objetos forward (vidros, transparentes, verniz): cada uma é mais um passe por objeto; 2 = os postes mais perto (8 custava ~4 fps à noite)");
             RadiantGI = c.CreateEntry("RadiantGI", true, "(antigo, use GI)");
 
             AmbienteCeu = c.CreateEntry("AmbienteDoCeu", true, "Luz ambiente calculada do céu do Enviro (true) ou em três faixas a partir da cor dele (false)");

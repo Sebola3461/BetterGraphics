@@ -73,7 +73,7 @@ Shader "Hidden/BetterGraphics/DeferredShading"
                     atten *= uvCookie.w < 0;
                     float d2 = dot(tolight, tolight);
                     atten *= Falloff(d2, _LightPos.w, tex2D(_LightTextureB0, (d2 * _LightPos.w).rr).r);
-                    atten *= UnityDeferredComputeShadow(wpos, fadeDist, uv);
+                    if (atten > 0.0) atten *= UnityDeferredComputeShadow(wpos, fadeDist, uv);
                 #elif defined(DIRECTIONAL) || defined(DIRECTIONAL_COOKIE)
                     lightDir = -_LightDir.xyz;
                     atten = UnityDeferredComputeShadow(wpos, fadeDist, uv);
@@ -85,7 +85,7 @@ Shader "Hidden/BetterGraphics/DeferredShading"
                     lightDir = -normalize(tolight);
                     float d2 = dot(tolight, tolight);
                     atten = Falloff(d2, _LightPos.w, tex2D(_LightTextureB0, (d2 * _LightPos.w).rr).r);
-                    atten *= UnityDeferredComputeShadow(tolight, fadeDist, uv);
+                    if (atten > 0.0) atten *= UnityDeferredComputeShadow(tolight, fadeDist, uv);
                     #if defined(POINT_COOKIE)
                         atten *= texCUBEbias(_LightTexture0, float4(mul(unity_WorldToLight, half4(wpos, 1)).xyz, -8)).w;
                     #endif
@@ -140,6 +140,9 @@ Shader "Hidden/BetterGraphics/DeferredShading"
             {
                 float3 wpos; float2 uv; half3 L; float atten, fadeDist;
                 LightParams(i, wpos, uv, L, atten, fadeDist);
+                // O volume da luz na tela cobre fundo além do alcance dela: sem luz aqui, nem lê o G-buffer (com os postes de
+                // alcance longo, ~7 luzes por pixel à noite).
+                if (atten <= 1e-5) return 0;
                 half4 g0 = tex2D(_CameraGBufferTexture0, uv);
                 half4 g1 = tex2D(_CameraGBufferTexture1, uv);
                 half4 g2 = tex2D(_CameraGBufferTexture2, uv);

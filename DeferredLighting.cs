@@ -25,7 +25,7 @@ namespace BetterGraphics
         static float _nextScan, _nextPick;
         static readonly HashSet<IntPtr> _shadowed = new();
 
-        internal static void CenaMudou() { _changed.Clear(); _lights.Clear(); _shadowed.Clear(); _nextScan = 0f; }
+        internal static void CenaMudou() { _changed.Clear(); _lights.Clear(); _shadowed.Clear(); _farOff.Clear(); _nextScan = 0f; }
 
         internal static void Manter()
         {
@@ -104,24 +104,47 @@ namespace BetterGraphics
             if (l == null || l.WasCollected) return;
             if (!_changed.TryGetValue(l.Pointer, out var o))
                 _changed[l.Pointer] = o = new Original { L = l, Range = l.range, Color = l.color, Shadows = l.shadows };
-            l.range = o.Range * Mathf.Max(Cfg.LightingRangeMultiplier.Value, 1f);
+            var cam = Pos.Cam;
+            float d = cam != null ? Vector3.Distance(l.transform.position, cam.transform.position) : 0f;
+            l.range = RangeFor(o, d);
             if (IsStreetlight(l) && Cfg.LightingStreetlightKelvin.Value > 0f) l.color = Kelvin(Cfg.LightingStreetlightKelvin.Value);
         }
 
-        // Sombra nos N postes ligados mais perto da câmera; os outros voltam ao original.
+        // Alcance longo só perto da câmera: cada luz cuja esfera toca a vista é desenhada à parte (no processador, o
+        // gargalo), e com o alcance x3 entravam centenas de postes distantes. Além de 250 m a luz apaga: a poça dela tem
+        // poucos pixels e está na névoa, mas a chamada de desenho custava igual.
+        const float LongRangeDistance = 80f, OffDistance = 250f;
+        static readonly HashSet<IntPtr> _farOff = new();
+
+        static float RangeFor(Original o, float distance)
+        {
+            float mult = Mathf.Max(Cfg.LightingRangeMultiplier.Value, 1f);
+            return o.Range * (distance < LongRangeDistance ? mult : Mathf.Min(mult, 1.4f));
+        }
+
+        // Sombra nos N postes ligados mais perto da câmera; os outros voltam ao original. Também o alcance de cada luz.
         static void PickShadows()
         {
             var cam = Pos.Cam;
             int n = Mathf.Max(Cfg.LightingShadowedStreetlights.Value, 0);
             var best = new List<(float d, Light l)>();
-            if (cam != null && n > 0)
+            if (cam != null)
             {
                 var c = cam.transform.position;
                 foreach (var l in _lights)
                 {
-                    if (l == null || l.WasCollected || !IsStreetlight(l) || !l.enabled || !l.gameObject.activeInHierarchy) continue;
+                    if (l == null || l.WasCollected) continue;
                     float d = Vector3.Distance(l.transform.position, c);
-                    if (d < 45f) best.Add((d, l));
+                    if (_changed.TryGetValue(l.Pointer, out var orig))
+                    {
+                        float r = RangeFor(orig, d);
+                        if (Mathf.Abs(l.range - r) > 0.01f) l.range = r;
+                        bool longe = d > OffDistance;
+                        // Só apaga o que estava aceso (o jogo liga e desliga os postes); acende de volta o que o mod apagou.
+                        if (longe && l.enabled) { l.enabled = false; _farOff.Add(l.Pointer); }
+                        else if (!longe && _farOff.Remove(l.Pointer)) l.enabled = true;
+                    }
+                    if (n > 0 && d < 45f && IsStreetlight(l) && l.enabled && l.gameObject.activeInHierarchy) best.Add((d, l));
                 }
                 best.Sort((a, b) => a.d.CompareTo(b.d));
             }
@@ -160,8 +183,14 @@ namespace BetterGraphics
                 _reflApplied = false;
             }
             foreach (var o in _changed.Values)
-                try { if (o.L != null && !o.L.WasCollected) { o.L.range = o.Range; o.L.color = o.Color; o.L.shadows = o.Shadows; } } catch { }
-            _changed.Clear(); _shadowed.Clear(); _nextScan = 0f;
+                try
+                {
+                    if (o.L == null || o.L.WasCollected) continue;
+                    o.L.range = o.Range; o.L.color = o.Color; o.L.shadows = o.Shadows;
+                    if (_farOff.Contains(o.L.Pointer)) o.L.enabled = true;
+                }
+                catch { }
+            _changed.Clear(); _shadowed.Clear(); _farOff.Clear(); _nextScan = 0f;
         }
 
         internal static string Estado() =>
