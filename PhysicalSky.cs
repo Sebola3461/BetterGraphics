@@ -179,7 +179,7 @@ namespace BetterGraphics
         }
 
         // Objeto Sun do Enviro: segue o sol também à noite (a luz direcional vira a lua).
-        static Vector3 SunDirection(Il2Cpp.EnviroSky sky)
+        internal static Vector3 SunDirection(Il2Cpp.EnviroSky sky)
         {
             var c = sky.Components;
             if (c != null && c.Sun != null) return (c.Sun.transform.position - sky.transform.position).normalized;

@@ -176,7 +176,7 @@ namespace BetterGraphics
         internal static MelonPreferences_Entry<string> AA, MapaMateriais, Tonemapper;
         internal static MelonPreferences_Entry<int> SombraCascatas, SombraResolucao, LuzesPorPixel, SondaResolucao;
         internal static MelonPreferences_Entry<float> SombraDistancia, AmbienteForca, AmbCeu, AmbHorizonte, AmbChao, SolForca, SombraForca,
-            Exposicao, ExposicaoMin, ExposicaoMax, Contraste, Saturacao, Temperatura, Bloom, BloomLimiar, AOIntensidade,
+            Exposicao, ExposicaoNoite, ExposicaoMin, ExposicaoMax, Contraste, Saturacao, Temperatura, Bloom, BloomLimiar, AOIntensidade,
             SondaIntervalo, BrilhoMax, VidroReflexo, VidroReflexoPerto, VidroReflexoDentro, VidroVeu, VidroVeuPerto, VidroTom,
             VolumetricaForca, RaiosSolForca, MapaBrilho, ChaoSeco, ChaoMolhado, CurvaPe, CurvaOmbro, ChaoEscurecer, ChuvaExposicao, CabineExposicao, CabineAmbiente, CabineMedicao, ChaoBaseUmida, ChuvaPneus, ChuvaPocas, ChuvaSarjeta,
             Neblina, CeuOclusaoMin, CeuOclusaoAlcance, LatariaBrilho, LatariaVerniz, CurvaPeAlcance, CurvaPeNoite, CurvaOmbroAlcance, CurvaOmbroAngulo, CabinePe, DofAbertura, DofFocal, ChuvaFrio, JanelaRebate, JanelaForca;
@@ -250,7 +250,8 @@ namespace BetterGraphics
             CurvaPeAlcance = c.CreateEntry("CurvaPeAlcance", 0.5f, "Tonemapper Custom: até onde vai o pé (0 a 1)");
             CurvaOmbroAlcance = c.CreateEntry("CurvaOmbroAlcance", 2.2f, "Tonemapper Custom: margem dos claros em EV antes de saturar (curto = branco estoura)");
             CurvaOmbroAngulo = c.CreateEntry("CurvaOmbroAngulo", 0f, "Tonemapper Custom: inclinação final do ombro (0 a 1)");
-            Exposicao = c.CreateEntry("Exposicao", -1f, "Compensação de exposição (EV)");
+            Exposicao = c.CreateEntry("Exposicao", -0.45f, "Compensação de exposição de dia (EV); -0.45 deixa o asfalto ao sol do meio-dia no brilho das fotos");
+            ExposicaoNoite = c.CreateEntry("ExposicaoNoite", -1f, "Compensação de exposição à noite (EV)");
             ExposicaoMin = c.CreateEntry("ExposicaoMin", -2.9f, "Luminância média mínima considerada (EV100): abaixo disso a cena fica escura de verdade. -2.9 (com o pé de curva da noite) deixa a rua à noite no brilho das fotos de referência");
             ExposicaoMax = c.CreateEntry("ExposicaoMax", 5f, "Luminância média máxima considerada (EV100); sol do meio-dia fica perto de +3,5");
             CabineExposicao = c.CreateEntry("CabineExposicao", 0.3f, "Exposição a mais (EV) com a câmera dentro do ônibus");

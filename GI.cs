@@ -39,12 +39,19 @@ namespace BetterGraphics
             return i * Mathf.Lerp(Cfg.GINoite.Value, 1f, DiaFator());
         }
 
-        // 0 com o sol abaixo do horizonte, 1 com ele acima de 12°.
+        // 0 com o sol abaixo do horizonte, 1 com ele acima de 12°. A altura vem do objeto Sun do Enviro: a luz direcional
+        // dele vira a lua à noite, e a altura dela dava "dia" às 21h.
         internal static float DiaFator()
         {
-            var sol = RenderSettings.sun;
-            if (sol == null) return 1f;
-            float elev = Mathf.Asin(Mathf.Clamp(-sol.transform.forward.y, -1f, 1f)) * Mathf.Rad2Deg;
+            var sky = Luz.Sky;
+            float elev;
+            if (sky != null) elev = Mathf.Asin(Mathf.Clamp(PhysicalSky.SunDirection(sky).y, -1f, 1f)) * Mathf.Rad2Deg;
+            else
+            {
+                var sol = RenderSettings.sun;
+                if (sol == null) return 1f;
+                elev = Mathf.Asin(Mathf.Clamp(-sol.transform.forward.y, -1f, 1f)) * Mathf.Rad2Deg;
+            }
             return Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0f, 12f, elev));
         }
 

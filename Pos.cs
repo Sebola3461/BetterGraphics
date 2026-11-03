@@ -153,7 +153,9 @@ namespace BetterGraphics
             // Chuva de dia: céu fechado claro e chão escuro; a adaptação automática levaria o chão molhado ao
             // cinza médio. Um pouco menos de exposição mantém o "dia escuro". À noite não: a cena já está no
             // limite da adaptação e ficava preta.
-            Set(_cor.postExposure, Cfg.Exposicao.Value + Cfg.ChuvaExposicao.Value * Chao.Umidade * GI.DiaFator() + cabine);
+            // Dia e noite com compensações próprias: o dia calibrado contra o asfalto das fotos ao meio-dia, a noite contra a rua.
+            float exposicao = Mathf.Lerp(Cfg.ExposicaoNoite.Value, Cfg.Exposicao.Value, GI.DiaFator());
+            Set(_cor.postExposure, exposicao + Cfg.ChuvaExposicao.Value * Chao.Umidade * GI.DiaFator() + cabine);
             // Chuva: luz toda difusa e ar cheio de água, cores apagadas e pouco contraste.
             float chuva = Luz.ChuvaAgora();
             Set(_cor.contrast, Cfg.Contraste.Value - 8f * chuva);
