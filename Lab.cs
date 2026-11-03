@@ -412,6 +412,22 @@ namespace BetterGraphics
                             sbSondas.AppendLine($"  {rp.transform.root.name}/{rp.name} | {rp.mode} {rp.refreshMode} {rp.timeSlicingMode} | res {rp.resolution} far {rp.farClipPlane} sombra {rp.shadowDistance} | ativa {rp.isActiveAndEnabled} | importância {rp.importance}");
                         Resp(sbSondas.ToString()); return;
                     }
+                case "cameras": // câmeras que renderizam: alvo, alcance, máscara, caminho, sombras
+                    {
+                        var sbCam = new System.Text.StringBuilder("cameras:" + System.Environment.NewLine);
+                        foreach (var c in UnityEngine.Camera.allCameras)
+                            sbCam.AppendLine($"  {c.transform.root.name}/{c.name} | prof {c.depth} | alvo {(c.targetTexture != null ? c.targetTexture.name + " " + c.targetTexture.width + "x" + c.targetTexture.height : "tela")} | far {c.farClipPlane} near {c.nearClipPlane} | máscara {c.cullingMask} | {c.actualRenderingPath} | fov {c.fieldOfView:0}");
+                        Resp(sbCam.ToString()); return;
+                    }
+                case "camera": // camera TEXTO 0|1: liga/desliga as câmeras cujo nome contém TEXTO (teste de custo)
+                    {
+                        int nCam = 0;
+                        foreach (var c in UnityEngine.Resources.FindObjectsOfTypeAll<UnityEngine.Camera>())
+                            if (c.name.Contains(p[1])) { c.enabled = p[2] == "1"; nCam++; }
+                        Resp($"ok camera {p[1]} {p[2]} ({nCam})"); return;
+                    }
+                case "lod": QualitySettings.lodBias = F(p[1]); Resp("ok " + l); return;                       // lod X: lodBias (teste de custo)
+                case "far": if (Pos.Cam != null) Pos.Cam.farClipPlane = F(p[1]); Resp("ok " + l); return;      // far X: alcance da câmera principal
                 case "gpu": Resp($"gpu: {SystemInfo.graphicsDeviceName} {SystemInfo.graphicsMemorySize} MB {SystemInfo.graphicsDeviceType} | cpu {SystemInfo.processorType} x{SystemInfo.processorCount} | ram {SystemInfo.systemMemorySize} MB | tela {Screen.width}x{Screen.height} {Screen.fullScreenMode} | vsync {QualitySettings.vSyncCount} alvo {Application.targetFrameRate} | qualidade {QualitySettings.GetQualityLevel()} sombras {QualitySettings.shadows} {QualitySettings.shadowResolution} dist {QualitySettings.shadowDistance} cascatas {QualitySettings.shadowCascades} luzes {QualitySettings.pixelLightCount} msaa {QualitySettings.antiAliasing} lod {QualitySettings.lodBias}"); return;
                 case "res": Screen.SetResolution(int.Parse(p[1]), int.Parse(p[2]), Screen.fullScreenMode); Resp("ok " + l); return; // res L A: muda a resolução (teste de gargalo da GPU)
                 case "fps": _fpsInicio = Time.unscaledTime; _fpsQuadros = 0; return;
