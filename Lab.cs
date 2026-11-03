@@ -291,6 +291,13 @@ namespace BetterGraphics
                 case "luzes": Resp(Luzes(p.Length > 1 ? int.Parse(p[1]) : 15)); return;  // luzes N: as N luzes pontuais/spot mais perto da câmera
                 case "gotasdebug": Resp(WindshieldRain.Debug(p[1] == "1")); return;
                 case "pelicula": Resp(WindshieldRain.SaveFilm(Path.Combine(_prints, "pelicula.png"))); return; // película do para-brisa com as palhetas em vermelho
+                case "luzinterna": // luzinterna N: alterna a luz interna N (1 a 3) do salão
+                    {
+                        int nLuz = int.Parse(p[1]);
+                        if (!PBSLoaderCommonUtils.Veiculos.Comandos.TemLuzInterna(nLuz)) { Resp("erro sem luz interna " + nLuz); return; }
+                        PBSLoaderCommonUtils.Veiculos.Comandos.LuzInterna(nLuz);
+                        Resp($"ok luzinterna {nLuz} acesa {PBSLoaderCommonUtils.Veiculos.Comandos.LuzInternaAcesa(nLuz)}"); return;
+                    }
                 case "limpador": PBSLoaderCommonUtils.Veiculos.Comandos.Limpadores(); Resp("ok limpador"); return;              // liga/desliga a chave do limpador
                 case "limpadorrapido": PBSLoaderCommonUtils.Veiculos.Comandos.LimpadoresRapidos(); Resp("ok limpador rápido"); return;
                 case "molhadodebug": Resp(Molhado.Debug(int.Parse(p[1]))); return;

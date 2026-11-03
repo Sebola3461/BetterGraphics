@@ -19,7 +19,7 @@ namespace BetterGraphics
         static Shader _shader, _reflShader;
         static bool _applied, _noShader, _reflApplied, _noReflShader;
 
-        sealed class Original { public Light L; public float Range; public Color Color; public LightShadows Shadows; }
+        sealed class Original { public Light L; public float Range, Intensity; public Color Color; public LightShadows Shadows; }
         static readonly Dictionary<IntPtr, Original> _changed = new();
         static readonly List<Light> _lights = new();
         static float _nextScan, _nextPick;
@@ -103,10 +103,10 @@ namespace BetterGraphics
         {
             if (l == null || l.WasCollected) return;
             if (!_changed.TryGetValue(l.Pointer, out var o))
-                _changed[l.Pointer] = o = new Original { L = l, Range = l.range, Color = l.color, Shadows = l.shadows };
+                _changed[l.Pointer] = o = new Original { L = l, Range = l.range, Intensity = l.intensity, Color = l.color, Shadows = l.shadows };
             var cam = Pos.Cam;
             float d = cam != null ? Vector3.Distance(l.transform.position, cam.transform.position) : 0f;
-            l.range = RangeFor(o, d);
+            ApplyRange(l, o, d);
             if (IsStreetlight(l) && Cfg.LightingStreetlightKelvin.Value > 0f) l.color = Kelvin(Cfg.LightingStreetlightKelvin.Value);
         }
 
@@ -116,10 +116,19 @@ namespace BetterGraphics
         const float LongRangeDistance = 80f, OffDistance = 250f;
         static readonly HashSet<IntPtr> _farOff = new();
 
-        static float RangeFor(Original o, float distance)
+        // O brilho da queda física é definido no alcance (k global dividido pelo multiplicador ao quadrado): a luz de alcance
+        // curto recebe a intensidade de volta na mesma proporção, para mudar só até onde vai, não o quanto ilumina.
+        // Só nos postes do mapa: a intensidade das luzes dos veículos é do jogo (freio, piscas).
+        static void ApplyRange(Light l, Original o, float distance)
         {
             float mult = Mathf.Max(Cfg.LightingRangeMultiplier.Value, 1f);
-            return o.Range * (distance < LongRangeDistance ? mult : Mathf.Min(mult, 1.4f));
+            bool poste = IsStreetlight(l);
+            float m = poste && distance >= LongRangeDistance ? Mathf.Min(mult, 1.4f) : mult;
+            float r = o.Range * m;
+            if (Mathf.Abs(l.range - r) > 0.01f) l.range = r;
+            if (!poste) return;
+            float k = mult / m, i = o.Intensity * k * k;
+            if (Mathf.Abs(l.intensity - i) > 0.001f) l.intensity = i;
         }
 
         // Sombra nos N postes ligados mais perto da câmera; os outros voltam ao original. Também o alcance de cada luz.
@@ -137,9 +146,8 @@ namespace BetterGraphics
                     float d = Vector3.Distance(l.transform.position, c);
                     if (_changed.TryGetValue(l.Pointer, out var orig))
                     {
-                        float r = RangeFor(orig, d);
-                        if (Mathf.Abs(l.range - r) > 0.01f) l.range = r;
-                        bool longe = d > OffDistance;
+                        ApplyRange(l, orig, d);
+                        bool longe = d > OffDistance && IsStreetlight(l);
                         // Só apaga o que estava aceso (o jogo liga e desliga os postes); acende de volta o que o mod apagou.
                         if (longe && l.enabled) { l.enabled = false; _farOff.Add(l.Pointer); }
                         else if (!longe && _farOff.Remove(l.Pointer)) l.enabled = true;
@@ -186,7 +194,7 @@ namespace BetterGraphics
                 try
                 {
                     if (o.L == null || o.L.WasCollected) continue;
-                    o.L.range = o.Range; o.L.color = o.Color; o.L.shadows = o.Shadows;
+                    o.L.range = o.Range; o.L.intensity = o.Intensity; o.L.color = o.Color; o.L.shadows = o.Shadows;
                     if (_farOff.Contains(o.L.Pointer)) o.L.enabled = true;
                 }
                 catch { }
