@@ -135,7 +135,10 @@ namespace BetterGraphics
             if (_sol == null) return;
             if (float.IsNaN(_solEscrito) || !Mathf.Approximately(_sol.intensity, _solEscrito)) _solBase = _sol.intensity;
             // Chuva: as nuvens carregadas cortam o sol direto; a luz que sobra chega espalhada pelo céu (Ambiente).
-            _sol.intensity = _solBase * Cfg.SolForca.Value * (1f - 0.9f * ChuvaAgora());
+            // À noite a luz direcional do Enviro é a lua, forte demais para a cidade (quase 2/3 do sol): nas fotos de rua ela
+            // some diante dos postes.
+            float lua = Mathf.Lerp(Mathf.Clamp01(Cfg.LuaForca.Value), 1f, GI.DiaFator());
+            _sol.intensity = _solBase * Cfg.SolForca.Value * (1f - 0.9f * ChuvaAgora()) * lua;
             _solEscrito = _sol.intensity;
             if (float.IsNaN(_sombraEscrita) || !Mathf.Approximately(_sol.shadowStrength, _sombraEscrita)) _sombraBase = _sol.shadowStrength;
             // Debaixo de nuvem carregada quase não há sombra definida.

@@ -24,7 +24,9 @@ static const float BG_RayleighHeight = 8.0;
 static const float BG_MieScattering = 3.996e-3;
 static const float BG_MieAbsorption = 0.444e-3;
 static const float BG_MieHeight = 1.2;
-static const float3 BG_OzoneAbsorption = float3(0.650, 1.881, 0.085) * 1e-3;
+// Média de cada faixa do sRGB, não o valor em 680/550/440 nm: a banda de Chappuis cobre 500-700 nm, e com o vermelho
+// quase sem absorção o crepúsculo saía roxo em vez de azul.
+static const float3 BG_OzoneAbsorption = float3(1.30, 1.90, 0.12) * 1e-3;
 
 struct BGMedium
 {

@@ -133,7 +133,7 @@ namespace BetterGraphics
 
         // Mesmas constantes do Atmosphere.cginc (km): a luz do sol na cena é a do topo da atmosfera vezes o que passa dela.
         static readonly Vector3 RayleighScattering = new(5.802e-3f, 13.558e-3f, 33.1e-3f);
-        static readonly Vector3 OzoneAbsorption = new(0.650e-3f, 1.881e-3f, 0.085e-3f);
+        static readonly Vector3 OzoneAbsorption = new(1.30e-3f, 1.90e-3f, 0.12e-3f);
         const float RGround = 6360f, RTop = 6460f, MieExtinction = 4.44e-3f;
         static Vector3 _sunColor = Vector3.one;
         static float _sunIntensity;

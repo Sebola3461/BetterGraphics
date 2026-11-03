@@ -154,19 +154,27 @@ namespace BetterGraphics
             // cinza médio. Um pouco menos de exposição mantém o "dia escuro". À noite não: a cena já está no
             // limite da adaptação e ficava preta.
             // Dia e noite com compensações próprias: o dia calibrado contra o asfalto das fotos ao meio-dia, a noite contra a rua.
-            float exposicao = Mathf.Lerp(Cfg.ExposicaoNoite.Value, Cfg.Exposicao.Value, GI.DiaFator());
+            // A da noite entra com a noite fechada: na hora azul a câmera ainda expõe como no fim do dia.
+            float exposicao = Mathf.Lerp(Cfg.Exposicao.Value, Cfg.ExposicaoNoite.Value, GI.NoiteFechada());
             Set(_cor.postExposure, exposicao + Cfg.ChuvaExposicao.Value * Chao.Umidade * GI.DiaFator() + cabine);
             // Chuva: luz toda difusa e ar cheio de água, cores apagadas e pouco contraste.
             float chuva = Luz.ChuvaAgora();
             Set(_cor.contrast, Cfg.Contraste.Value - 8f * chuva);
-            Set(_cor.saturation, Cfg.Saturacao.Value - 12f * chuva);
+            // À noite fechada o olho e a câmera perdem cor (fotos de rua à noite: saturação ~0,15); na hora azul ainda não.
+            Set(_cor.saturation, Mathf.Lerp(Cfg.Saturacao.Value, Cfg.SaturacaoNoite.Value, GI.NoiteFechada()) - 12f * chuva);
             // Chuva de dia puxa o tom para o frio (o céu fechado azula a luz difusa).
             // Branco automático da câmera: compensa o sol quente (o real é ~5000 K ao meio-dia), como o celular faz nas fotos.
             // Com o sol baixo a correção some (plena acima de 20°, nada abaixo de 8°): o fim de tarde fica dourado, como a
             // câmera deixa no pôr do sol.
             float alto = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(8f, 20f, GI.AlturaSol()));
             float balanco = -BalancoPorCalor * Mathf.Min(PhysicalSky.SunWarmth(), BalancoTeto) * Cfg.SkyWhiteBalance.Value * alto;
-            Set(_cor.temperature, Cfg.Temperatura.Value + balanco - Cfg.ChuvaFrio.Value * Chao.Umidade * GI.DiaFator());
+            // À noite a câmera ajusta o branco para os postes (LED ~4500 K): o céu e o luar puxavam a cena inteira para o azul.
+            float noite = Cfg.TemperaturaNoite.Value * GI.NoiteFechada();
+            // Hora azul (sol de 0° a -8°): a câmera deixa o céu azul em vez de corrigi-lo.
+            float altura = GI.AlturaSol();
+            float horaAzul = float.IsNaN(altura) ? 0f : Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(1f, -2f, altura)) * (1f - GI.NoiteFechada());
+            noite += Cfg.TemperaturaHoraAzul.Value * horaAzul;
+            Set(_cor.temperature, Cfg.Temperatura.Value + balanco + noite - Cfg.ChuvaFrio.Value * Chao.Umidade * GI.DiaFator());
 
             _ao.active = Cfg.AO.Value;
             Liga(_ao);

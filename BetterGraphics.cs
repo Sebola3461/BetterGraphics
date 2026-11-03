@@ -176,7 +176,7 @@ namespace BetterGraphics
         internal static MelonPreferences_Entry<string> AA, MapaMateriais, Tonemapper;
         internal static MelonPreferences_Entry<int> SombraCascatas, SombraResolucao, LuzesPorPixel, SondaResolucao;
         internal static MelonPreferences_Entry<float> SombraDistancia, AmbienteForca, AmbCeu, AmbHorizonte, AmbChao, SolForca, SombraForca,
-            Exposicao, ExposicaoNoite, ExposicaoMin, ExposicaoMax, Contraste, Saturacao, Temperatura, Bloom, BloomLimiar, AOIntensidade,
+            Exposicao, ExposicaoNoite, ExposicaoMin, ExposicaoMax, Contraste, Saturacao, SaturacaoNoite, TemperaturaNoite, TemperaturaHoraAzul, LuaForca, Temperatura, Bloom, BloomLimiar, AOIntensidade,
             SondaIntervalo, BrilhoMax, VidroReflexo, VidroReflexoPerto, VidroReflexoDentro, VidroVeu, VidroVeuPerto, VidroTom,
             VolumetricaForca, RaiosSolForca, MapaBrilho, ChaoSeco, ChaoMolhado, CurvaPe, CurvaOmbro, ChaoEscurecer, ChuvaExposicao, CabineExposicao, CabineAmbiente, CabineMedicao, ChaoBaseUmida, ChuvaPneus, ChuvaPocas, ChuvaSarjeta,
             Neblina, CeuOclusaoMin, CeuOclusaoAlcance, LatariaBrilho, LatariaVerniz, CurvaPeAlcance, CurvaPeNoite, CurvaOmbroAlcance, CurvaOmbroAngulo, CabinePe, DofAbertura, DofFocal, ChuvaFrio, JanelaRebate, JanelaForca;
@@ -251,7 +251,7 @@ namespace BetterGraphics
             CurvaOmbroAlcance = c.CreateEntry("CurvaOmbroAlcance", 2.2f, "Tonemapper Custom: margem dos claros em EV antes de saturar (curto = branco estoura)");
             CurvaOmbroAngulo = c.CreateEntry("CurvaOmbroAngulo", 0f, "Tonemapper Custom: inclinação final do ombro (0 a 1)");
             Exposicao = c.CreateEntry("Exposicao", 0.05f, "Compensação de exposição de dia (EV); 0.05 deixa o asfalto ao sol do meio-dia no brilho das fotos (com o branco automático)");
-            ExposicaoNoite = c.CreateEntry("ExposicaoNoite", -1f, "Compensação de exposição à noite (EV)");
+            ExposicaoNoite = c.CreateEntry("ExposicaoNoite", -0.4f, "Compensação de exposição à noite (EV)");
             ExposicaoMin = c.CreateEntry("ExposicaoMin", -2.9f, "Luminância média mínima considerada (EV100): abaixo disso a cena fica escura de verdade. -2.9 (com o pé de curva da noite) deixa a rua à noite no brilho das fotos de referência");
             ExposicaoMax = c.CreateEntry("ExposicaoMax", 5f, "Luminância média máxima considerada (EV100); sol do meio-dia fica perto de +3,5");
             CabineExposicao = c.CreateEntry("CabineExposicao", 0.3f, "Exposição a mais (EV) com a câmera dentro do ônibus");
@@ -263,6 +263,10 @@ namespace BetterGraphics
             CabineAmbiente = c.CreateEntry("CabineAmbiente", 1.0f, "Luz ambiente dentro do ônibus (luz que entra pelos vidros e rebate)");
             Contraste = c.CreateEntry("Contraste", 0f, "-100 a 100");
             Saturacao = c.CreateEntry("Saturacao", -22f, "-100 a 100");
+            SaturacaoNoite = c.CreateEntry("SaturacaoNoite", -45f, "Saturação à noite, -100 a 100 (o olho perde cor no escuro; fotos de rua à noite ~0,15)");
+            TemperaturaNoite = c.CreateEntry("TemperaturaNoite", 0f, "Branco da câmera à noite (positivo = mais quente): ajusta para a luz dos postes, tira o azul do luar");
+            TemperaturaHoraAzul = c.CreateEntry("TemperaturaHoraAzul", -20f, "Branco da câmera na hora azul (sol de 0° a -8°; negativo = mais frio): o céu do anoitecer fica azul como nas fotos");
+            LuaForca = c.CreateEntry("LuaForca", 0.3f, "Força da luz da lua (1 = a do Enviro, quase 2/3 do sol; na cidade ela some diante dos postes)");
             Temperatura = c.CreateEntry("Temperatura", 0f, "-100 frio a 100 quente");
             Bloom = c.CreateEntry("Bloom", 0.22f, "Intensidade do bloom");
             BloomLimiar = c.CreateEntry("BloomLimiar", 1.8f, "Brilho a partir do qual há bloom");
@@ -323,9 +327,9 @@ namespace BetterGraphics
             var l = MelonPreferences.CreateCategory("Lighting", "BetterGraphics: iluminação");
             LightingCustomDeferred = l.CreateEntry("custom_deferred", true, "Iluminação deferred própria (BRDF GGX com compensação de energia, queda física das luzes)");
             LightingPhysicalFalloff = l.CreateEntry("physical_falloff", true, "Luzes pontuais e spot caem pelo inverso do quadrado (desligado: queda da Unity)");
-            LightingRangeMultiplier = l.CreateEntry("light_range_multiplier", 1.4f, "Multiplica o alcance das luzes: a cauda fraca da queda física chega ao poste vizinho");
+            LightingRangeMultiplier = l.CreateEntry("light_range_multiplier", 3f, "Multiplica o alcance das luzes: a cauda fraca da queda física chega ao poste vizinho (3 = chão entre postes nas fotos, 30-50)");
             LightingBrightness = l.CreateEntry("light_brightness", 2f, "Brilho das luzes pontuais e spot (1 = igual ao da Unity a 40% do alcance original; 2 = calibrado contra fotos de rua à noite)");
-            LightingStreetlightKelvin = l.CreateEntry("streetlight_kelvin", 4500f, "Cor dos postes do mapa em kelvin (4000 a 5000 = LED; 2000 = sódio laranja; 0 = cor original do mapa)");
+            LightingStreetlightKelvin = l.CreateEntry("streetlight_kelvin", 5500f, "Cor dos postes do mapa em kelvin (5500 = LED branco neutro das fotos; 2000 = sódio laranja; 0 = cor original do mapa)");
             LightingPhysicalGlass = l.CreateEntry("physical_glass", true, "Vidro dos veículos com Fresnel de verdade (espelho de lado, transparente de frente) no lugar do véu + reflexo somado");
             LightingGlassSideTransmission = l.CreateEntry("glass_side_transmission", 0.3f, "Luz que atravessa as janelas laterais (fumê de ônibus urbano: 0.25 a 0.4)");
             LightingGlassFrontTransmission = l.CreateEntry("glass_front_transmission", 0.85f, "Luz que atravessa o para-brisa e os vidros de frente e trás");

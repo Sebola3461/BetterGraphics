@@ -48,6 +48,13 @@ namespace BetterGraphics
             return Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0f, 12f, elev));
         }
 
+        // 0 até o sol 2° abaixo do horizonte, 1 com ele 10° abaixo (noite fechada). A hora azul fica entre os dois.
+        internal static float NoiteFechada()
+        {
+            float elev = AlturaSol();
+            return float.IsNaN(elev) ? 0f : Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(-2f, -10f, elev));
+        }
+
         // Altura do sol em graus (NaN sem sol nenhum).
         internal static float AlturaSol()
         {
