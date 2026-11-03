@@ -269,6 +269,22 @@ namespace BetterGraphics
                     if (_andar <= 0f) { foreach (var rb in _rbs) if (rb != null) rb.isKinematic = false; _rbs.Clear(); }
                     Resp("ok " + l); return;
                 case "olharb": Resp(OlharB(F(p[1]), F(p[2]))); return;
+                case "mover": // mover DX DZ GIRO: leva o ônibus DX m para o lado e DZ m para a frente (no espaço dele) e gira GIRO graus,
+                              // apoiado no chão por raio, com a física congelada; "mover 0 0 0" só solta a física
+                    {
+                        var bm = Veiculo.Raiz();
+                        if (bm == null) { Resp("erro sem ônibus"); return; }
+                        float dx = F(p[1]), dz = F(p[2]), giro = F(p[3]);
+                        if (dx == 0f && dz == 0f && giro == 0f) { foreach (var rb in _rbs) if (rb != null) rb.isKinematic = false; _rbs.Clear(); Resp("ok física solta"); return; }
+                        foreach (var rb in bm.GetComponentsInChildren<Rigidbody>()) if (!rb.isKinematic) { _rbs.Add(rb); rb.isKinematic = true; }
+                        float alturaAntes = GroundHeight(bm.position, bm);
+                        var alvo = bm.position + bm.right * dx + bm.forward * dz;
+                        float alturaDepois = GroundHeight(alvo, bm);
+                        if (!float.IsNaN(alturaAntes) && !float.IsNaN(alturaDepois)) alvo.y += alturaDepois - alturaAntes;
+                        bm.position = alvo;
+                        bm.rotation = Quaternion.AngleAxis(giro, Vector3.up) * bm.rotation;
+                        Resp($"ok mover {bm.position} chão {alturaAntes:0.00} -> {alturaDepois:0.00}"); return;
+                    }
                 case "vol": Resp(Pos.Estado()); return;
                 case "tex": // tex TEXTO: formato (sRGB ou linear) da textura de cor dos renderers cujo nome contém TEXTO
                     var vt = new HashSet<IntPtr>(); var sbt = new System.Text.StringBuilder("tex:\n");
@@ -409,6 +425,19 @@ namespace BetterGraphics
         }
 
         // Renderers sob raízes que começam com RAIZ e usam material com TEXTO: nome, textura, metal.
+        // Altura do chão sob um ponto (raio de cima para baixo que ignora o próprio ônibus); NaN sem chão.
+        static float GroundHeight(Vector3 p, Transform ignorar)
+        {
+            var hits = Physics.RaycastAll(p + Vector3.up * 3f, Vector3.down, 40f);  // de pouco acima da base: tetos e coberturas ficam de fora
+            float melhor = float.NaN, dist = float.MaxValue;
+            foreach (var h in hits)
+            {
+                if (h.collider == null || h.collider.transform.IsChildOf(ignorar)) continue;
+                if (h.distance < dist) { dist = h.distance; melhor = h.point.y; }
+            }
+            return melhor;
+        }
+
         static string MatRaiz(string raiz, string texto, int n)
         {
             var sb = new System.Text.StringBuilder($"matraiz {raiz} {texto}:\n");

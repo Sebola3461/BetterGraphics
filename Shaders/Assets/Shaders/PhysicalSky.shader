@@ -68,6 +68,18 @@ Shader "BetterGraphics/PhysicalSky"
                 float lightViewCos = (lh > 1e-4 && ls > 1e-4) ? dot(h / lh, hs / ls) : 1.0;
                 float3 L = tex2Dlod(_BG_SkyViewLut, float4(BGSkyViewUv(r, dir.y, lightViewCos), 0.0, 0.0)).rgb * _BG_SkyScale;
 
+                // Abaixo do horizonte: chão cinza (albedo do chão sob o sol e o céu), não a neblina iluminada pelo sol.
+                // A luz ambiente e as sondas saem deste céu inteiro: com a neblina laranja embaixo, a saia da lataria e
+                // os pneus (voltados para baixo) ficavam marrons. O rebote de verdade do asfalto é da GI de tela.
+                if (dir.y < 0.0)
+                {
+                    float3 zenith = tex2Dlod(_BG_SkyViewLut, float4(BGSkyViewUv(r, 1.0, 1.0), 0.0, 0.0)).rgb * _BG_SkyScale;
+                    float3 sunT = BGTransmittance(r, max(sun.y, 0.0));
+                    float sunGround = _BG_SkyScale / UNITY_PI * dot(sunT, float3(0.2126, 0.7152, 0.0722)) * saturate(sun.y);
+                    float ground = _BG_AtmGroundAlbedo * (sunGround + dot(zenith, float3(0.2126, 0.7152, 0.0722)));
+                    L = lerp(L, ground.xxx, smoothstep(0.0, -0.08, dir.y));
+                }
+
                 // Disco do sol (0,27°), escurecido na borda e atenuado pela atmosfera na direção dele.
                 float cosSun = dot(dir, sun);
                 const float sunAngle = 0.00465;
