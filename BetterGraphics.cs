@@ -37,6 +37,7 @@ namespace BetterGraphics
             Luz.CenaMudou();
             Pos.CenaMudou();
             Reflexos.CenaMudou();
+            ClearCoat.SceneChanged();
             Vidros.CenaMudou();
             Materiais.CenaMudou();
             Nativo.CenaMudou();
@@ -75,6 +76,7 @@ namespace BetterGraphics
             Seguro(Varredura.Quadro, "Varredura");
             Seguro(Reflexos.Quadro, "Sonda");
             Seguro(Vidros.Quadro, "Vidros");
+            Seguro(ClearCoat.Frame, "Verniz");
             Seguro(Chuva.Quadro, "Chuva");
             if (Cfg.Ativo.Value) Seguro(DeferredLighting.Quadro, "DeferredQuadro");
         }
@@ -107,6 +109,7 @@ namespace BetterGraphics
             Seguro(Pos.Restaurar, "Pos");
             Seguro(Luz.Restaurar, "Luz");
             Seguro(Reflexos.Restaurar, "Reflexos");
+            Seguro(ClearCoat.Restore, "Verniz");
             Seguro(Vidros.Restaurar, "Vidros");
             Seguro(Materiais.Restaurar, "Materiais");
             Seguro(Chao.Restaurar, "Chao");
@@ -297,9 +300,10 @@ namespace BetterGraphics
             CreateLightingEntries();
         }
 
-        internal static MelonPreferences_Entry<bool> RainGlassEnabled, WiperActive, RainFallEnabled, RainCollision, LightingCustomDeferred, LightingPhysicalFalloff, LightingCustomReflections, LightingPhysicalGlass;
+        internal static MelonPreferences_Entry<bool> RainGlassEnabled, WiperActive, RainFallEnabled, RainCollision, LightingCustomDeferred, LightingPhysicalFalloff, LightingCustomReflections, LightingPhysicalGlass, LightingClearCoat;
         internal static MelonPreferences_Entry<float> LightingRangeMultiplier, LightingBrightness, LightingStreetlightKelvin,
-            LightingGlassSideTransmission, LightingGlassFrontTransmission, LightingGlassInsideReflection, LightingGlassInsideTransmission;
+            LightingGlassSideTransmission, LightingGlassFrontTransmission, LightingGlassInsideReflection, LightingGlassInsideTransmission,
+            LightingClearCoatSmoothness, LightingClearCoatStrength, LightingPaintBaseSmoothness;
         internal static MelonPreferences_Entry<int> LightingShadowedStreetlights;
         internal static MelonPreferences_Entry<float[]> RainWindVelocity;
         internal static MelonPreferences_Entry<float> RainIntensity, RainGlobalWetness, RainAirHumidity, RainParticleDensity, RainTerminalVelocity, RainMotionBlurStretch;
@@ -321,6 +325,10 @@ namespace BetterGraphics
             LightingGlassFrontTransmission = l.CreateEntry("glass_front_transmission", 0.85f, "Luz que atravessa o para-brisa e os vidros de frente e trás");
             LightingGlassInsideTransmission = l.CreateEntry("glass_inside_transmission", 0.9f, "Luz que atravessa os vidros vista de dentro do ônibus (o fumê quase não escurece a vista de dentro)");
             LightingGlassInsideReflection = l.CreateEntry("glass_inside_reflection", 0.35f, "Reflexo dos vidros visto de dentro do ônibus (1 = o da sonda do salão; menos = para-brisa limpo)");
+            LightingClearCoat = l.CreateEntry("clearcoat", true, "Verniz na pintura dos veículos (camada lisa por cima da tinta fosca, com Fresnel de verdade)");
+            LightingClearCoatSmoothness = l.CreateEntry("clearcoat_smoothness", 0.95f, "Lisura do verniz (1 = espelho; verniz novo ~0.95, gasto ~0.8)");
+            LightingClearCoatStrength = l.CreateEntry("clearcoat_strength", 1f, "Força do verniz (0 = tinta sem verniz)");
+            LightingPaintBaseSmoothness = l.CreateEntry("paint_base_smoothness", 0.5f, "Smoothness da tinta embaixo do verniz");
             LightingCustomReflections = l.CreateEntry("custom_reflections", true, "Reflexos deferred próprios: energia certa, oclusão especular e reflexo do céu só onde o ponto enxerga o céu");
             LightingShadowedStreetlights = l.CreateEntry("shadowed_streetlights", 2, "Quantos postes perto da câmera projetam sombra (cada um custa um mapa de sombra cúbico)");
         }

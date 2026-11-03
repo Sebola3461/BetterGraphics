@@ -208,7 +208,7 @@ namespace BetterGraphics
 
         static void ManterLataria()
         {
-            float chave = Cfg.LatariaBrilho.Value + Cfg.LatariaVerniz.Value * 10f;
+            float chave = Cfg.LatariaBrilho.Value + Cfg.LatariaVerniz.Value * 10f + (ClearCoat.Active ? 100f + Cfg.LightingPaintBaseSmoothness.Value : 0f);
             if (Mathf.Approximately(_latariaAplicada, chave)) return;
             _latariaAplicada = chave;
             foreach (var (m, g, mt) in _latarias.Values)
@@ -219,6 +219,13 @@ namespace BetterGraphics
         // some. Um pouco de "metal" faz o papel do verniz: reflexo visível da rua e do céu sem cromar.
         static void AplicarLataria(Material m)
         {
+            // Com o verniz de verdade (ClearCoat) a tinta embaixo é dielétrica e meio fosca; o brilho é da película.
+            if (ClearCoat.Active)
+            {
+                m.SetFloat("_Glossiness", Mathf.Clamp01(Cfg.LightingPaintBaseSmoothness.Value));
+                if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", 0f);
+                return;
+            }
             m.SetFloat("_Glossiness", Cfg.LatariaBrilho.Value);
             if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", Cfg.LatariaVerniz.Value);
         }

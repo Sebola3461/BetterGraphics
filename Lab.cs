@@ -213,6 +213,7 @@ namespace BetterGraphics
                 case "chuva": Resp(Chuva.Estado()); return;
                 case "deferred": Resp(DeferredLighting.Estado()); return;
                 case "vidros": Resp(Vidros.Estado()); return;
+                case "verniz": Resp(ClearCoat.State()); return;
                 case "vidrodebug": Shader.SetGlobalFloat("_BG_GlassDebug", F(p[1])); Resp("ok " + l); return; // 1 = vidro mostra só a sonda de reflexo
                 case "refldebug": Resp(DeferredLighting.ReflDebug(int.Parse(p[1]))); return;  // verde = oclusão especular nas sondas com caixa; vermelho = céu visível no reflexo do céu
                 case "luzes": Resp(Luzes(p.Length > 1 ? int.Parse(p[1]) : 15)); return;  // luzes N: as N luzes pontuais/spot mais perto da câmera
@@ -305,6 +306,17 @@ namespace BetterGraphics
                     var ly = (Pos.Cam ?? UnityEngine.Camera.main).GetComponent<UnityEngine.Rendering.PostProcessing.PostProcessLayer>();
                     ly.enabled = p[1] == "1"; Resp("ok pplayer " + ly.enabled); return;
                 case "matraiz": Resp(MatRaiz(p[1], p[2], p.Length > 3 ? int.Parse(p[3]) : 10)); return;
+                case "refs": // refs: renderers "_ref" de cada veículo (materiais, submeshes, shader)
+                    var sbr = new System.Text.StringBuilder("refs:\n");
+                    foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>())
+                    {
+                        if (!r.name.Contains("_ref", StringComparison.Ordinal)) continue;
+                        var mf = r.GetComponent<MeshFilter>();
+                        int subs = mf != null && mf.sharedMesh != null ? mf.sharedMesh.subMeshCount : -1;
+                        var ms = r.sharedMaterials;
+                        sbr.AppendLine($"  {r.transform.root.name}/{r.name} | {r.GetType().Name} mats {ms.Length} subs {subs} | {(ms.Length > 0 && ms[0] != null && ms[0].shader != null ? ms[0].shader.name : "-")}");
+                    }
+                    Resp(sbr.ToString()); return;
                 case "fps": _fpsInicio = Time.unscaledTime; _fpsQuadros = 0; return;
                 case "quadros": _quadros.Clear(); _modulos.Clear(); _qAte = Time.unscaledTime + F(p[1]); _ate = _qAte + 0.1f; return;
                 case "info": Resp(Info()); return;

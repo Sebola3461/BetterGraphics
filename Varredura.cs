@@ -73,7 +73,7 @@ namespace BetterGraphics
             {
                 var m = mats[i];
                 if (m == null) continue;
-                if (lataria && m.shader != null && m.shader.name == "Standard") { if (roda) Reflexos.Borracha(m); else Reflexos.Lataria(m); }
+                if (lataria && m.shader != null && m.shader.name == "Standard") { if (roda) Reflexos.Borracha(m); else { ClearCoat.Apply(r); Reflexos.Lataria(m); } }
                 switch (Classificar(m))
                 {
                     case Tipo.Pintura: if (doOnibus) Reflexos.Pintura(m); break;
