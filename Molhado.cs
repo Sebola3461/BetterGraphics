@@ -26,7 +26,7 @@ namespace BetterGraphics
 
         internal static bool Ativo => _cb != null;
 
-        internal static void CenaMudou() { Tirar(); _mapaPronto = false; }
+        internal static void CenaMudou() { Tirar(); _mapaPronto = false; _candidatos.Clear(); _fila.Clear(); _vistos.Clear(); }
 
         internal static void Manter()
         {
@@ -116,31 +116,42 @@ namespace BetterGraphics
         static Material _matAltura;
         static Vector2 _centroMapa;
         static bool _mapaPronto;
-        static float _proximoMapa, _proximaLista;
+        static float _proximoMapa;
 
         // Caixa (xz) e submalhas guardadas na lista: ler r.bounds e sharedMaterials a cada desenho eram
         // chamadas ao IL2CPP por objeto (5 ms por mapa).
         struct Candidato { public Renderer r; public float x0, x1, z0, z1; public int sub; }
-        static List<Candidato> _candidatos = new(), _novos = new();
-        static Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppArrayBase<Renderer> _todos;
-        static int _lidos;
+        static readonly List<Candidato> _candidatos = new();
+        static readonly Queue<Renderer> _fila = new();
+        static readonly HashSet<System.IntPtr> _vistos = new();
+        static readonly System.Diagnostics.Stopwatch _swLista = new();
+        static bool _listaMudou;
+
+        // Renderers novos chegam pela Varredura (uma varredura da cena só, aos poucos).
+        internal static void Novo(Renderer r)
+        {
+            if (r != null && _vistos.Add(r.Pointer)) _fila.Enqueue(r);
+        }
 
         // Entra no mapa o que abriga da chuva: opacos, e dos transparentes só vidro e
         // policarbonato (têm _Color e não _TintColor). Partículas, rastros, brilhos de poste e o domo do
-        // céu ficam de fora. A lista é refeita a cada 10 s, 150 renderers por quadro.
+        // céu ficam de fora. Cada renderer é avaliado uma vez (refazer a lista inteira a cada 10 s ocupava ~1,3 ms
+        // de quase todo quadro), com 0,5 ms por quadro. Veículos ficam de fora: andam, e a caixa guardada envelheceria
+        // (o ônibus do jogador é a caixa dele no shader).
         static void Listar(int mascara)
         {
-            if (_todos == null)
+            if (_fila.Count == 0)
             {
-                if (Time.unscaledTime < _proximaLista) return;
-                _todos = Object.FindObjectsOfType<Renderer>();
-                _lidos = 0; _novos.Clear();
+                if (_listaMudou) { _listaMudou = false; _proximoMapa = 0f; } // lote novo: redesenha
+                return;
             }
-            int fim = System.Math.Min(_todos.Length, _lidos + 150);
-            for (; _lidos < fim; _lidos++)
+            _swLista.Restart();
+            while (_fila.Count > 0 && _swLista.Elapsed.TotalMilliseconds < 0.5)
             {
-                var r = _todos[_lidos];
-                if (r == null || !r.enabled || !r.gameObject.activeInHierarchy) continue;
+                var r = _fila.Dequeue();
+                if (r == null || r.WasCollected) continue;
+                // Desligado agora pode ligar depois (blocos do mapa): volta a ser visto na próxima vez que a Varredura o trouxer.
+                if (!r.enabled || !r.gameObject.activeInHierarchy) { _vistos.Remove(r.Pointer); continue; }
                 // Só o que a câmera principal vê (a seta do GPS, só do minimapa, flutua sobre o ônibus).
                 if ((mascara & (1 << r.gameObject.layer)) == 0) continue;
                 if (r.TryCast<ParticleSystemRenderer>() != null || r.TryCast<TrailRenderer>() != null || r.TryCast<LineRenderer>() != null) continue;
@@ -152,14 +163,11 @@ namespace BetterGraphics
                 if (m.renderQueue >= 2500 && (!m.HasProperty("_Color") || m.HasProperty("_TintColor") || m.shader.name.Contains("Particle", System.StringComparison.OrdinalIgnoreCase))) continue;
                 // Folhagem (recorte por alfa) entraria como um quadrado sólido; e na chuva forte a água passa pela copa.
                 if ((m.renderQueue >= 2450 && m.renderQueue < 2500) || m.IsKeywordEnabled("_ALPHATEST_ON") || m.shader.name.Contains("Cutout", System.StringComparison.OrdinalIgnoreCase) || m.shader.name.Contains("Tree", System.StringComparison.OrdinalIgnoreCase) || m.shader.name.Contains("Leaves", System.StringComparison.OrdinalIgnoreCase)) continue;
+                if (Materiais.IsVehicle(r)) continue;
                 Vector3 mn = b.min, mx = b.max;
-                _novos.Add(new Candidato { r = r, x0 = mn.x, x1 = mx.x, z0 = mn.z, z1 = mx.z, sub = mats.Length });
+                _candidatos.Add(new Candidato { r = r, x0 = mn.x, x1 = mx.x, z0 = mn.z, z1 = mx.z, sub = mats.Length });
+                _listaMudou = true;
             }
-            if (_lidos < _todos.Length) return;
-            (_candidatos, _novos) = (_novos, _candidatos);
-            _todos = null;
-            _proximaLista = Time.unscaledTime + 10f;
-            _proximoMapa = 0f; // lista nova: redesenha
         }
 
         static void Abrigo(Camera cam)
@@ -198,9 +206,10 @@ namespace BetterGraphics
             _cbMapa.SetRenderTarget(_mapa);
             _cbMapa.ClearRenderTarget(true, true, new Color(-10000f, 0f, 0f, 0f));
             _cbMapa.SetViewProjectionMatrices(vista, proj);
+            _candidatos.RemoveAll(c => c.r == null || c.r.WasCollected);
             foreach (var c in _candidatos)
             {
-                if (c.x1 < x0 || c.x0 > x1 || c.z1 < z0 || c.z0 > z1 || c.r == null) continue;
+                if (c.x1 < x0 || c.x0 > x1 || c.z1 < z0 || c.z0 > z1) continue;
                 for (int k = 0; k < c.sub; k++) _cbMapa.DrawRenderer(c.r, _matAltura, k, 0);
             }
             Graphics.ExecuteCommandBuffer(_cbMapa);

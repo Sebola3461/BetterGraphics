@@ -18,7 +18,7 @@ namespace BetterGraphics
 
         // Peça de veículo: tem um corpo físico acima dela (ônibus e tráfego) ou é de um modelo de ônibus (.ini).
         // O cenário estático não tem; testar a raiz inteira pegava o mapa (algum cone ou placa com física).
-        static bool IsVehicle(Renderer r)
+        internal static bool IsVehicle(Renderer r)
         {
             var root = r.transform.root;
             if (_vehicleRoot.TryGetValue(root.Pointer, out bool v) && v) return true;
@@ -46,28 +46,34 @@ namespace BetterGraphics
             string modo = Cfg.MapaMateriais.Value;
             if (modo != _modoAplicado || !Mathf.Approximately(_brilhoAplicado, Cfg.MapaBrilho.Value))
             {
+                bool primeira = _modoAplicado.Length == 0;
                 Restaurar();
                 _modoAplicado = modo; _brilhoAplicado = Cfg.MapaBrilho.Value; _proxima = 0f;
+                if (!primeira) Varredura.Reiniciar(); // os materiais voltam pela varredura com o modo novo
             }
-            if (modo == "original" || Time.unscaledTime < _proxima) return;
-            _proxima = Time.unscaledTime + 15f; // mapas carregam em blocos; pega os novos
-            int novos = 0;
-            foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>())
-                foreach (var m in r.sharedMaterials)
-                {
-                    if (m == null || m.shader == null || _orig.ContainsKey(m.Pointer)) continue;
-                    if (m.shader.name != "Standard" || !m.name.StartsWith("basicwhite", StringComparison.Ordinal)) continue;
-                    if (modo == "fisico" && IsVehicle(r)) continue;
-                    var o = new Orig
-                    {
-                        m = m, kwMetal = m.IsKeywordEnabled("_METALLICGLOSSMAP"), kwSpec = m.IsKeywordEnabled("_SPECGLOSSMAP"),
-                        metal = m.GetFloat("_Metallic"), gloss = m.GetFloat("_Glossiness"), escala = m.GetFloat("_GlossMapScale"),
-                    };
-                    _orig[m.Pointer] = o;
-                    Aplicar(m, modo);
-                    novos++;
-                }
-            if (novos > 0) Log.Msg($"Materiais do mapa ({modo}): {novos} novos, {_orig.Count} no total");
+            if (modo == "original" || _novos == 0 || Time.unscaledTime < _proxima) return;
+            _proxima = Time.unscaledTime + 15f;
+            Log.Msg($"Materiais do mapa ({modo}): {_novos} novos, {_orig.Count} no total");
+            _novos = 0;
+        }
+
+        static int _novos;
+
+        // Chamado pela Varredura para cada material de cada renderer novo (ela já percorre a cena aos poucos; uma segunda
+        // varredura inteira aqui, a cada 15 s, travava ~60 ms).
+        internal static void Considerar(Renderer r, Material m, string shader)
+        {
+            string modo = Cfg.MapaMateriais.Value;
+            if (modo == "original" || _orig.ContainsKey(m.Pointer)) return;
+            if (shader != "Standard" || !m.name.StartsWith("basicwhite", StringComparison.Ordinal)) return;
+            if (modo == "fisico" && IsVehicle(r)) return;
+            _orig[m.Pointer] = new Orig
+            {
+                m = m, kwMetal = m.IsKeywordEnabled("_METALLICGLOSSMAP"), kwSpec = m.IsKeywordEnabled("_SPECGLOSSMAP"),
+                metal = m.GetFloat("_Metallic"), gloss = m.GetFloat("_Glossiness"), escala = m.GetFloat("_GlossMapScale"),
+            };
+            Aplicar(m, modo);
+            _novos++;
         }
 
         static void Aplicar(Material m, string modo)

@@ -45,7 +45,10 @@ namespace BetterGraphics
                 for (int i = 0; i < n; i++)
                 {
                     IntPtr e = System.Runtime.InteropServices.Marshal.ReadIntPtr(dados, i * IntPtr.Size);
-                    if (e != IntPtr.Zero && _vistos.Add(e)) _fila.Enqueue(new Renderer(e));
+                    if (e == IntPtr.Zero || !_vistos.Add(e)) continue;
+                    var r = new Renderer(e);
+                    _fila.Enqueue(r);
+                    Molhado.Novo(r);
                 }
             }
             if (_fila.Count == 0) return;
@@ -73,7 +76,10 @@ namespace BetterGraphics
             {
                 var m = mats[i];
                 if (m == null) continue;
-                if (lataria && m.shader != null && m.shader.name == "Standard") { if (roda) Reflexos.Borracha(m); else { ClearCoat.Apply(r); Reflexos.Lataria(m); } }
+                var sh = m.shader;
+                string shNome = sh != null ? sh.name : "";
+                if (sh != null) Materiais.Considerar(r, m, shNome);
+                if (lataria && shNome == "Standard") { if (roda) Reflexos.Borracha(m); else { ClearCoat.Apply(r); Reflexos.Lataria(m); } }
                 switch (Classificar(m))
                 {
                     case Tipo.Pintura: if (doOnibus) Reflexos.Pintura(m); break;
