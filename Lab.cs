@@ -405,6 +405,13 @@ namespace BetterGraphics
                         sbr.AppendLine($"  {r.transform.root.name}/{r.name} | {r.GetType().Name} mats {ms.Length} subs {subs} | {(ms.Length > 0 && ms[0] != null && ms[0].shader != null ? ms[0].shader.name : "-")}");
                     }
                     Resp(sbr.ToString()); return;
+                case "sondas": // sondas de reflexo da cena: modo, atualização, resolução, alcance, ativa
+                    {
+                        var sbSondas = new System.Text.StringBuilder("sondas:\n");
+                        foreach (var rp in UnityEngine.Object.FindObjectsOfType<ReflectionProbe>(true))
+                            sbSondas.AppendLine($"  {rp.transform.root.name}/{rp.name} | {rp.mode} {rp.refreshMode} {rp.timeSlicingMode} | res {rp.resolution} far {rp.farClipPlane} sombra {rp.shadowDistance} | ativa {rp.isActiveAndEnabled} | importância {rp.importance}");
+                        Resp(sbSondas.ToString()); return;
+                    }
                 case "gpu": Resp($"gpu: {SystemInfo.graphicsDeviceName} {SystemInfo.graphicsMemorySize} MB {SystemInfo.graphicsDeviceType} | cpu {SystemInfo.processorType} x{SystemInfo.processorCount} | ram {SystemInfo.systemMemorySize} MB | tela {Screen.width}x{Screen.height} {Screen.fullScreenMode} | vsync {QualitySettings.vSyncCount} alvo {Application.targetFrameRate} | qualidade {QualitySettings.GetQualityLevel()} sombras {QualitySettings.shadows} {QualitySettings.shadowResolution} dist {QualitySettings.shadowDistance} cascatas {QualitySettings.shadowCascades} luzes {QualitySettings.pixelLightCount} msaa {QualitySettings.antiAliasing} lod {QualitySettings.lodBias}"); return;
                 case "res": Screen.SetResolution(int.Parse(p[1]), int.Parse(p[2]), Screen.fullScreenMode); Resp("ok " + l); return; // res L A: muda a resolução (teste de gargalo da GPU)
                 case "fps": _fpsInicio = Time.unscaledTime; _fpsQuadros = 0; return;

@@ -183,6 +183,8 @@ namespace BetterGraphics
 
         // ---- quadro: simula, envia e desenha ----
 
+        static float _secoDesde = -1f;
+
         internal static void Quadro()
         {
             if (_bus == null || _renderers.Count == 0) return;
@@ -204,6 +206,16 @@ namespace BetterGraphics
             Shader.SetGlobalFloat("_BG_RainRoughness", Mathf.Clamp01(Cfg.RainRoughnessWet.Value));
             Shader.SetGlobalFloat("_BG_ContactAngle", Mathf.Clamp(Cfg.RainContactAngle.Value, 20f, 89f) * Mathf.Deg2Rad);
             if (_sim == null) return;
+
+            // Vidro seco há 1 min (sem chuva e sem gota): nada a simular nem a desenhar (custava ~0,5 ms por quadro no seco).
+            bool semAgua = rain <= 0.001f && _sim.Count == 0;
+            if (!semAgua) _secoDesde = -1f;
+            else if (_secoDesde < 0f) _secoDesde = Time.unscaledTime;
+            if (semAgua && Time.unscaledTime - _secoDesde > 60f)
+            {
+                if (_step != null && _step.IsCompleted) Wait();
+                return;
+            }
 
             // A simulação roda numa thread, um passo adiantada. Se o passo anterior ainda não acabou, este quadro
             // desenha o último resultado e o tempo fica para o próximo passo (o quadro do jogo não espera).

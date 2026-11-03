@@ -15,6 +15,8 @@ namespace BetterGraphics
     {
         static GameObject _go;
         static ReflectionProbe _sonda;
+        static Vector3 _ultimaPosicao = Vector3.positiveInfinity;
+        static float _ultimoCubo = -100f;
         static int _id = -1; static float _proxima;
 
         sealed class PinturaOrig { public Material m; public float gloss = -1f, escala = -1f; }
@@ -99,6 +101,11 @@ namespace BetterGraphics
             else return;
             if (Time.unscaledTime < _proxima) return;
             if (_id != -1 && !_sonda.IsFinishedRendering(_id)) return;
+            // Parada (menos de 2 m desde o último cubo), a vista quase não muda: refaz a cada 2 s, só pelo sol e pelo
+            // trânsito. Cada cubo é a cena desenhada 6 vezes no processador, o gargalo do jogo.
+            var aqui = _go.transform.position;
+            if ((aqui - _ultimaPosicao).sqrMagnitude < 4f && Time.unscaledTime < _ultimoCubo + 2f) return;
+            _ultimaPosicao = aqui; _ultimoCubo = Time.unscaledTime;
             _id = _sonda.RenderProbe();
             _proxima = Time.unscaledTime + Mathf.Max(0f, Cfg.SondaIntervalo.Value);
             if (_sonda.realtimeTexture == null) Log.Aviso("Sonda: textura de reflexo nula após render (será renderizada de novo)");
