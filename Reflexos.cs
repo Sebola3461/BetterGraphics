@@ -72,7 +72,9 @@ namespace BetterGraphics
                 _sonda.blendDistance = 15f;
                 _sonda.nearClipPlane = 0.3f;
                 _sonda.farClipPlane = 400f;
-                _sonda.shadowDistance = 60f;
+                // Sem sombras no cubo: cada face redesenharia os mapas de sombra (no processador, o gargalo do jogo), e
+                // nos reflexos da lataria e dos vidros a sombra quase não aparece.
+                _sonda.shadowDistance = 0f;
                 _sonda.clearFlags = ReflectionProbeClearFlags.Skybox;
             }
             int res = Mathf.ClosestPowerOfTwo(Mathf.Clamp(Cfg.SondaResolucao.Value, 64, 1024));
@@ -157,8 +159,9 @@ namespace BetterGraphics
                 _sondaDentro.importance = 101;
                 _sondaDentro.blendDistance = 0.2f;
                 _sondaDentro.nearClipPlane = 0.05f;
-                _sondaDentro.farClipPlane = 150f;
-                _sondaDentro.shadowDistance = 40f;
+                // Só o salão importa nesta sonda: além de 40 m entra o céu, e sem sombras (ver a sonda de fora).
+                _sondaDentro.farClipPlane = 40f;
+                _sondaDentro.shadowDistance = 0f;
                 _sondaDentro.clearFlags = ReflectionProbeClearFlags.Skybox;
                 _sondaDentro.resolution = 128;
             }
@@ -186,7 +189,8 @@ namespace BetterGraphics
             if (Time.unscaledTime < _proximaDentro) return;
             if (_idDentro != -1 && !_sondaDentro.IsFinishedRendering(_idDentro)) return;
             _idDentro = _sondaDentro.RenderProbe();
-            _proximaDentro = Time.unscaledTime + Mathf.Max(0.2f, Cfg.SondaIntervalo.Value);
+            // O interior quase não muda: o cubo inteiro a cada 2 s (no máximo) custava ~10 ms por quadro a cada meio segundo.
+            _proximaDentro = Time.unscaledTime + Mathf.Max(2f, Cfg.SondaIntervalo.Value);
         }
 
         internal static int Pinturas => _pinturas.Count;

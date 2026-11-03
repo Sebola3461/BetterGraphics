@@ -405,6 +405,8 @@ namespace BetterGraphics
                         sbr.AppendLine($"  {r.transform.root.name}/{r.name} | {r.GetType().Name} mats {ms.Length} subs {subs} | {(ms.Length > 0 && ms[0] != null && ms[0].shader != null ? ms[0].shader.name : "-")}");
                     }
                     Resp(sbr.ToString()); return;
+                case "gpu": Resp($"gpu: {SystemInfo.graphicsDeviceName} {SystemInfo.graphicsMemorySize} MB {SystemInfo.graphicsDeviceType} | cpu {SystemInfo.processorType} x{SystemInfo.processorCount} | ram {SystemInfo.systemMemorySize} MB | tela {Screen.width}x{Screen.height} {Screen.fullScreenMode} | vsync {QualitySettings.vSyncCount} alvo {Application.targetFrameRate} | qualidade {QualitySettings.GetQualityLevel()} sombras {QualitySettings.shadows} {QualitySettings.shadowResolution} dist {QualitySettings.shadowDistance} cascatas {QualitySettings.shadowCascades} luzes {QualitySettings.pixelLightCount} msaa {QualitySettings.antiAliasing} lod {QualitySettings.lodBias}"); return;
+                case "res": Screen.SetResolution(int.Parse(p[1]), int.Parse(p[2]), Screen.fullScreenMode); Resp("ok " + l); return; // res L A: muda a resolução (teste de gargalo da GPU)
                 case "fps": _fpsInicio = Time.unscaledTime; _fpsQuadros = 0; return;
                 case "monitor": _mon.Clear(); _monAte = Time.unscaledTime + F(p[1]); _ate = _monAte + 0.1f; return;
                 case "quadros": _quadros.Clear(); _modulos.Clear(); _qAte = Time.unscaledTime + F(p[1]); _ate = _qAte + 0.1f; return;
