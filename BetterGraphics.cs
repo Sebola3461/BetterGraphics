@@ -250,7 +250,7 @@ namespace BetterGraphics
             CurvaPeAlcance = c.CreateEntry("CurvaPeAlcance", 0.5f, "Tonemapper Custom: até onde vai o pé (0 a 1)");
             CurvaOmbroAlcance = c.CreateEntry("CurvaOmbroAlcance", 2.2f, "Tonemapper Custom: margem dos claros em EV antes de saturar (curto = branco estoura)");
             CurvaOmbroAngulo = c.CreateEntry("CurvaOmbroAngulo", 0f, "Tonemapper Custom: inclinação final do ombro (0 a 1)");
-            Exposicao = c.CreateEntry("Exposicao", -0.45f, "Compensação de exposição de dia (EV); -0.45 deixa o asfalto ao sol do meio-dia no brilho das fotos");
+            Exposicao = c.CreateEntry("Exposicao", 0.05f, "Compensação de exposição de dia (EV); 0.05 deixa o asfalto ao sol do meio-dia no brilho das fotos (com o branco automático)");
             ExposicaoNoite = c.CreateEntry("ExposicaoNoite", -1f, "Compensação de exposição à noite (EV)");
             ExposicaoMin = c.CreateEntry("ExposicaoMin", -2.9f, "Luminância média mínima considerada (EV100): abaixo disso a cena fica escura de verdade. -2.9 (com o pé de curva da noite) deixa a rua à noite no brilho das fotos de referência");
             ExposicaoMax = c.CreateEntry("ExposicaoMax", 5f, "Luminância média máxima considerada (EV100); sol do meio-dia fica perto de +3,5");
@@ -310,7 +310,7 @@ namespace BetterGraphics
             LightingClearCoatSmoothness, LightingClearCoatStrength, LightingPaintBaseSmoothness;
         internal static MelonPreferences_Entry<int> LightingShadowedStreetlights;
         internal static MelonPreferences_Entry<bool> SkyPhysical, SkyPhysicalSun, SkyAerialFog;
-        internal static MelonPreferences_Entry<float> SkyAerosol, SkyMieG, SkyGroundAlbedo, SkySunIntensity, SkySunDiskMax, SkyCityGlow, SkyMoonAngle, SkyMoonGlow, SkyHazeHeight, SkyFogMatch;
+        internal static MelonPreferences_Entry<float> SkyAerosol, SkyMieG, SkyGroundAlbedo, SkySunIntensity, SkySunDiskMax, SkyCityGlow, SkyMoonAngle, SkyMoonGlow, SkyHazeHeight, SkyFogMatch, SkyWhiteBalance;
         internal static MelonPreferences_Entry<float[]> RainWindVelocity;
         internal static MelonPreferences_Entry<float> RainIntensity, RainGlobalWetness, RainAirHumidity, RainParticleDensity, RainTerminalVelocity, RainMotionBlurStretch;
         internal static MelonPreferences_Entry<int[]> RainGridResolution;
@@ -343,7 +343,7 @@ namespace BetterGraphics
         {
             var k = MelonPreferences.CreateCategory("Sky", "BetterGraphics: céu e atmosfera");
             SkyPhysical = k.CreateEntry("physical_sky", true, "Céu físico próprio (Rayleigh, aerossol e ozônio) no lugar do céu do Enviro; nuvens, estrelas e lua continuam dele");
-            SkyAerosol = k.CreateEntry("aerosol", 1.5f, "Aerossol (poeira, poluição, umidade) relativo ao ar limpo: 1 = montanha, 3 a 5 = cidade grande; mais = céu esbranquiçado e horizonte desbotado");
+            SkyAerosol = k.CreateEntry("aerosol", 2f, "Aerossol (poeira, poluição, umidade) relativo ao ar limpo: 1 = montanha, 3 a 5 = cidade grande; mais = céu esbranquiçado e horizonte desbotado");
             SkyMieG = k.CreateEntry("mie_g", 0.8f, "Concentração do brilho em volta do sol (0 a 0.95)");
             SkyGroundAlbedo = k.CreateEntry("ground_albedo", 0.2f, "Albedo médio do chão visto de cima (cidade ~0.15 a 0.2)");
             SkyPhysicalSun = k.CreateEntry("physical_sun", true, "Cor e força do sol saem da mesma atmosfera do céu (dourado e fraco no fim da tarde); desligado: as do Enviro");
@@ -351,8 +351,9 @@ namespace BetterGraphics
             SkySunDiskMax = k.CreateEntry("sun_disk_max", 400f, "Teto do brilho do disco do sol (o real estoura o bloom e pisca)");
             SkyCityGlow = k.CreateEntry("city_glow", 0.02f, "Brilho da cidade no céu à noite (poluição luminosa)");
             SkyAerialFog = k.CreateEntry("aerial_fog", true, "Névoa própria por perspectiva aérea (o longe ganha a cor do céu naquela direção) no lugar da névoa do Enviro");
-            SkyHazeHeight = k.CreateEntry("haze_height", 0.3f, "Altura da camada de neblina da cidade e do clima (km)");
+            SkyHazeHeight = k.CreateEntry("haze_height", 0.5f, "Altura da camada de neblina da cidade e do clima (km)");
             SkyFogMatch = k.CreateEntry("fog_density", 1f, "Multiplica a densidade de névoa do clima do Enviro (1 = a mesma visibilidade da névoa dele)");
+            SkyWhiteBalance = k.CreateEntry("white_balance", 1f, "Branco automático da câmera: compensa o sol quente como o celular faz (1 = como nas fotos; 0 = sem correção)");
             SkyMoonAngle = k.CreateEntry("moon_angle", 0.035f, "Meio ângulo do disco da lua no céu (rad; a real é 0.0045, o Enviro exagera para ela aparecer)");
             SkyMoonGlow = k.CreateEntry("moon_glow", 0.001f, "Halo da lua (luz dela espalhada no ar)");
         }

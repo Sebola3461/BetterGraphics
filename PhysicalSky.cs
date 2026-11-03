@@ -178,6 +178,14 @@ namespace BetterGraphics
             light.intensity = _sunIntensity;
         }
 
+        // Quanto o sol da cena puxa para o quente (0 = branco). Vale com o sol físico ligado e de dia.
+        internal static float SunWarmth()
+        {
+            var sky = Luz.Sky;
+            if (!Cfg.SkyPhysical.Value || !Cfg.SkyPhysicalSun.Value || _noShader || sky == null || sky.isNight || _sunColor.x <= 0f) return 0f;
+            return Mathf.Clamp01(1f - _sunColor.z / _sunColor.x);
+        }
+
         // Objeto Sun do Enviro: segue o sol também à noite (a luz direcional vira a lua).
         internal static Vector3 SunDirection(Il2Cpp.EnviroSky sky)
         {

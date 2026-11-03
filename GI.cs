@@ -43,16 +43,18 @@ namespace BetterGraphics
         // dele vira a lua à noite, e a altura dela dava "dia" às 21h.
         internal static float DiaFator()
         {
-            var sky = Luz.Sky;
-            float elev;
-            if (sky != null) elev = Mathf.Asin(Mathf.Clamp(PhysicalSky.SunDirection(sky).y, -1f, 1f)) * Mathf.Rad2Deg;
-            else
-            {
-                var sol = RenderSettings.sun;
-                if (sol == null) return 1f;
-                elev = Mathf.Asin(Mathf.Clamp(-sol.transform.forward.y, -1f, 1f)) * Mathf.Rad2Deg;
-            }
+            float elev = AlturaSol();
+            if (float.IsNaN(elev)) return 1f;
             return Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0f, 12f, elev));
+        }
+
+        // Altura do sol em graus (NaN sem sol nenhum).
+        internal static float AlturaSol()
+        {
+            var sky = Luz.Sky;
+            if (sky != null) return Mathf.Asin(Mathf.Clamp(PhysicalSky.SunDirection(sky).y, -1f, 1f)) * Mathf.Rad2Deg;
+            var sol = RenderSettings.sun;
+            return sol != null ? Mathf.Asin(Mathf.Clamp(-sol.transform.forward.y, -1f, 1f)) * Mathf.Rad2Deg : float.NaN;
         }
 
         // Força do mapa de sombra refletivo pela altura do sol: à noite a luz direcional do Enviro vira a

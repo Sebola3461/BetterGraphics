@@ -161,7 +161,12 @@ namespace BetterGraphics
             Set(_cor.contrast, Cfg.Contraste.Value - 8f * chuva);
             Set(_cor.saturation, Cfg.Saturacao.Value - 12f * chuva);
             // Chuva de dia puxa o tom para o frio (o céu fechado azula a luz difusa).
-            Set(_cor.temperature, Cfg.Temperatura.Value - Cfg.ChuvaFrio.Value * Chao.Umidade * GI.DiaFator());
+            // Branco automático da câmera: compensa o sol quente (o real é ~5000 K ao meio-dia), como o celular faz nas fotos.
+            // Com o sol baixo a correção some (plena acima de 20°, nada abaixo de 8°): o fim de tarde fica dourado, como a
+            // câmera deixa no pôr do sol.
+            float alto = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(8f, 20f, GI.AlturaSol()));
+            float balanco = -BalancoPorCalor * Mathf.Min(PhysicalSky.SunWarmth(), BalancoTeto) * Cfg.SkyWhiteBalance.Value * alto;
+            Set(_cor.temperature, Cfg.Temperatura.Value + balanco - Cfg.ChuvaFrio.Value * Chao.Umidade * GI.DiaFator());
 
             _ao.active = Cfg.AO.Value;
             Liga(_ao);
@@ -255,6 +260,10 @@ namespace BetterGraphics
         static void Set(AmbientOcclusionModeParameter p, AmbientOcclusionMode v) { p.overrideState = true; Escrever(p, (int)v); }
         static void Set(ScreenSpaceReflectionPresetParameter p, ScreenSpaceReflectionPreset v) { p.overrideState = true; Escrever(p, (int)v); }
         static void Set(ScreenSpaceReflectionResolutionParameter p, ScreenSpaceReflectionResolution v) { p.overrideState = true; Escrever(p, (int)v); }
+
+        // Medido no lab: com o sol do meio-dia (calor 0,19) dá temperatura -20: asfalto ao sol neutro e sombra azulada como
+        // nas fotos (B/R ~1,35).
+        const float BalancoPorCalor = 105f, BalancoTeto = 0.25f;
 
         internal static float PostExposureNow => _cor != null ? _cor.postExposure.value : 0f;
 
