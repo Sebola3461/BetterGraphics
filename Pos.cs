@@ -156,7 +156,9 @@ namespace BetterGraphics
             // Dia e noite com compensações próprias: o dia calibrado contra o asfalto das fotos ao meio-dia, a noite contra a rua.
             // A da noite entra com a noite fechada: na hora azul a câmera ainda expõe como no fim do dia.
             float exposicao = Mathf.Lerp(Cfg.Exposicao.Value, Cfg.ExposicaoNoite.Value, GI.NoiteFechada());
-            Set(_cor.postExposure, exposicao + Cfg.ChuvaExposicao.Value * Chao.Umidade * GI.DiaFator() + cabine);
+            // Céu fechado de dia: a foto de um dia nublado fica sombria; a adaptação automática levaria tudo ao cinza médio.
+            float nublado = Cfg.ExposicaoNublado.Value * Luz.CeuFechado() * GI.DiaFator();
+            Set(_cor.postExposure, exposicao + Cfg.ChuvaExposicao.Value * Chao.Umidade * GI.DiaFator() + nublado + cabine);
             // Chuva: luz toda difusa e ar cheio de água, cores apagadas e pouco contraste.
             float chuva = Luz.ChuvaAgora();
             Set(_cor.contrast, Cfg.Contraste.Value - 8f * chuva);

@@ -138,11 +138,14 @@ namespace BetterGraphics
             // À noite a luz direcional do Enviro é a lua, forte demais para a cidade (quase 2/3 do sol): nas fotos de rua ela
             // some diante dos postes.
             float lua = Mathf.Lerp(Mathf.Clamp01(Cfg.LuaForca.Value), 1f, GI.DiaFator());
-            _sol.intensity = _solBase * Cfg.SolForca.Value * (1f - 0.9f * ChuvaAgora()) * lua;
+            // Céu fechado (nublado, chuva fraca de céu branco): quase não há sol direto, só luz difusa. Sem isso o asfalto
+            // molhado faiscava com o reflexo do sol debaixo de um céu todo branco.
+            float semSol = Mathf.Max(ChuvaAgora(), CeuFechado());
+            _sol.intensity = _solBase * Cfg.SolForca.Value * (1f - 0.9f * semSol) * lua;
             _solEscrito = _sol.intensity;
             if (float.IsNaN(_sombraEscrita) || !Mathf.Approximately(_sol.shadowStrength, _sombraEscrita)) _sombraBase = _sol.shadowStrength;
             // Debaixo de nuvem carregada quase não há sombra definida.
-            _sol.shadowStrength = Mathf.Lerp(_sombraBase, 1f, Cfg.SombraForca.Value) * (1f - 0.8f * ChuvaAgora());
+            _sol.shadowStrength = Mathf.Lerp(_sombraBase, 1f, Cfg.SombraForca.Value) * (1f - 0.8f * semSol);
             _sombraEscrita = _sol.shadowStrength;
             if (_sol.shadows == LightShadows.Hard) _sol.shadows = LightShadows.Soft;
         }
@@ -246,6 +249,14 @@ namespace BetterGraphics
         }
 
         // Chuva atual (0 a 1) já com o rain_intensity do schema.
+        // Quanto o céu está fechado (0 = limpo, 1 = coberto), pela cobertura que o Enviro dá ao céu no clima atual.
+        internal static float CeuFechado()
+        {
+            var sky = Sky;
+            if (sky == null) return 0f;
+            return Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.3f, 0.9f, sky.currentWeatherSkyMod.a));
+        }
+
         internal static float ChuvaAgora() => Mathf.Clamp01(Chuva.Intensidade() * Mathf.Max(Cfg.RainIntensity.Value, 0f));
 
         static Color Mul(Color c, float k) => new Color(c.r * k, c.g * k, c.b * k, 1f);

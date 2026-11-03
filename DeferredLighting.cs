@@ -43,6 +43,7 @@ namespace BetterGraphics
             Reflections();
             float m = Mathf.Max(Cfg.LightingRangeMultiplier.Value, 1f);
             Shader.SetGlobalFloat("_BG_LightK", BaseK * Mathf.Max(Cfg.LightingBrightness.Value, 0f) / (m * m));
+            Shader.SetGlobalFloat("_BG_LampRadius", 0.3f); // cabeça de poste / luminária: ~30 cm
             Shader.SetGlobalFloat("_BG_PhysicalFalloff", Cfg.LightingPhysicalFalloff.Value ? 1f : 0f);
             Shader.SetGlobalFloat("_BG_SunRadius", 0.0047f);
         }

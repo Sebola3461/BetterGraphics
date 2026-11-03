@@ -129,7 +129,7 @@ namespace BetterGraphics
 
         // Sol que ilumina a atmosfera: o do topo, cortado pela chuva como a luz direcional (a névoa da chuva é cinza
         // escura, iluminada pelas nuvens, não pelo sol aberto).
-        static float SunScale() => Mathf.PI * Mathf.Max(0f, Cfg.SkySunIntensity.Value) * (1f - 0.7f * Luz.ChuvaAgora());
+        static float SunScale() => Mathf.PI * Mathf.Max(0f, Cfg.SkySunIntensity.Value) * (1f - 0.35f * Mathf.Max(Luz.ChuvaAgora(), Luz.CeuFechado()));
 
         // Mesmas constantes do Atmosphere.cginc (km): a luz do sol na cena é a do topo da atmosfera vezes o que passa dela.
         static readonly Vector3 RayleighScattering = new(5.802e-3f, 13.558e-3f, 33.1e-3f);

@@ -44,6 +44,7 @@ Shader "Hidden/BetterGraphics/DeferredShading"
             float _BG_LightK;          // brilho da luz pontual a 1 alcance de distância, em frações da intensidade
             float _BG_PhysicalFalloff; // 1 = queda física; 0 = a da Unity
             float _BG_SunRadius;       // raio angular do sol (rad)
+            float _BG_LampRadius;      // raio das lâmpadas pontuais (m): o reflexo delas no chão molhado tem tamanho
 
             // Queda física: I·k·R² / (d² + tamanho da lâmpada²), com janela (1 - (d/R)^4)² que leva a zero no alcance.
             float Falloff(float d2, float invRange2, float unityAtten)
@@ -105,7 +106,7 @@ Shader "Hidden/BetterGraphics/DeferredShading"
                 return float2(-1.04, 1.04) * a004 + r.zw;
             }
 
-            float3 Shade(float3 diffColor, float3 specColor, float perceptual, float3 N, float3 V, float3 L, float3 lightColor, bool sun)
+            float3 Shade(float3 diffColor, float3 specColor, float perceptual, float3 N, float3 V, float3 L, float3 lightColor, bool sun, float lampOverDist)
             {
                 float3 H = normalize(L + V);
                 float NoL = saturate(dot(N, L));
@@ -117,6 +118,15 @@ Shader "Hidden/BetterGraphics/DeferredShading"
                 float a = max(perceptual * perceptual, 0.002);
                 // Luz com tamanho (o sol): alarga o lóbulo do material liso, como uma esfera de luz.
                 if (sun) a = saturate(a + _BG_SunRadius * 0.5);
+                // Lâmpada esférica (Karis): o lóbulo alarga pelo ângulo da lâmpada vista do ponto e a energia é renormalizada.
+                // Como ponto, o poste refletido no asfalto encharcado virava uma mancha branca estourada.
+                float sphereNorm = 1.0;
+                if (!sun)
+                {
+                    float aw = saturate(a + lampOverDist * 0.5);
+                    sphereNorm = (a / aw) * (a / aw);
+                    a = aw;
+                }
                 float a2 = a * a;
                 float d = NoH * NoH * (a2 - 1.0) + 1.0;
                 float D = a2 / (UNITY_PI * d * d + 1e-7);
@@ -125,7 +135,7 @@ Shader "Hidden/BetterGraphics/DeferredShading"
                 float2 ab = EnvBrdf(perceptual, NoV);
                 float3 energy = 1.0 + specColor * (1.0 / max(ab.x + ab.y, 0.05) - 1.0);
                 // Especular zero (borracha do pneu) não brilha nem de lado: o Fresnel de Schlick daria brilho rasante.
-                float3 spec = D * vis * F * energy * UNITY_PI * saturate(max(specColor.r, max(specColor.g, specColor.b)) * 50.0);
+                float3 spec = D * vis * F * energy * UNITY_PI * sphereNorm * saturate(max(specColor.r, max(specColor.g, specColor.b)) * 50.0);
 
                 // Difuso Burley (sem 1/pi, como a Unity).
                 float fd90 = 0.5 + 2.0 * LoH * LoH * perceptual;
@@ -153,7 +163,8 @@ Shader "Hidden/BetterGraphics/DeferredShading"
                 #else
                     bool sun = false;
                 #endif
-                float3 c = Shade(data.diffuseColor, data.specularColor, 1.0 - data.smoothness, data.normalWorld, V, L, _LightColor.rgb * atten, sun);
+                float lampOverDist = sun ? 0.0 : _BG_LampRadius / max(length(_LightPos.xyz - wpos), 0.05);
+                float3 c = Shade(data.diffuseColor, data.specularColor, 1.0 - data.smoothness, data.normalWorld, V, L, _LightColor.rgb * atten, sun, lampOverDist);
                 return half4(c, 1.0);
             }
 
