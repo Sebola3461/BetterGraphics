@@ -3,7 +3,7 @@ using MelonLoader;
 using PBSLoaderCommonUtils;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(BetterGraphics.BetterGraphicsMod), "BetterGraphics", "1.7.0", "nzrn")]
+[assembly: MelonInfo(typeof(BetterGraphics.BetterGraphicsMod), "BetterGraphics", "2.0.0", "nzrn")]
 [assembly: MelonGame(null, "Proton Bus Simulator")]
 
 namespace BetterGraphics
