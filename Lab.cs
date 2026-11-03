@@ -428,6 +428,35 @@ namespace BetterGraphics
                     }
                 case "lod": QualitySettings.lodBias = F(p[1]); Resp("ok " + l); return;                       // lod X: lodBias (teste de custo)
                 case "far": if (Pos.Cam != null) Pos.Cam.farClipPlane = F(p[1]); Resp("ok " + l); return;      // far X: alcance da câmera principal
+                case "paradas": // paradas: pontos de ônibus do mapa (índice, nome, distância do ônibus)
+                    {
+                        var sbPar = new System.Text.StringBuilder("paradas:" + System.Environment.NewLine);
+                        var busP = Veiculo.Raiz();
+                        var paradasMapa = PBSLoaderCommonUtils.Mapas.Mapa.Paradas;
+                        for (int i = 0; i < paradasMapa.Count; i++)
+                            sbPar.AppendLine($"  {i} {paradasMapa[i]} a {(busP != null ? Vector3.Distance(paradasMapa[i].Posicao, busP.position) : -1f):0} m");
+                        Resp(sbPar.ToString()); return;
+                    }
+                case "irparada": // irparada N: leva o ônibus ao ponto N (alinhado com o gatilho do ponto), física congelada
+                    {
+                        var busP = Veiculo.Raiz();
+                        var paradasMapa = PBSLoaderCommonUtils.Mapas.Mapa.Paradas;
+                        int i = int.Parse(p[1]);
+                        if (busP == null || i < 0 || i >= paradasMapa.Count || paradasMapa[i].Jogo == null) { Resp("erro parada " + p[1]); return; }
+                        foreach (var rb in busP.GetComponentsInChildren<Rigidbody>()) if (!rb.isKinematic) { _rbs.Add(rb); rb.isKinematic = true; }
+                        var tp = paradasMapa[i].Jogo.transform;
+                        var alvo = paradasMapa[i].Posicao;
+                        // O gatilho fica rente à calçada: chão só abaixo dele (o raio pegava o alto dos muros).
+                        float chao = GroundHeight(alvo, busP, alvo.y + 0.5f);
+                        float base0 = GroundHeight(busP.position, busP);
+                        float folga = float.IsNaN(base0) ? 0f : busP.position.y - base0;
+                        if (!float.IsNaN(chao)) alvo.y = chao + folga;
+                        // O gatilho olha para a calçada: a rua corre na perpendicular (lado direito do ônibus para o ponto).
+                        var frente = Vector3.ProjectOnPlane(-tp.right, Vector3.up);
+                        busP.position = alvo;
+                        if (frente.sqrMagnitude > 1e-4f) busP.rotation = Quaternion.LookRotation(frente.normalized, Vector3.up);
+                        Resp($"ok irparada {i} {paradasMapa[i]} em {alvo}"); return;
+                    }
                 case "gpu": Resp($"gpu: {SystemInfo.graphicsDeviceName} {SystemInfo.graphicsMemorySize} MB {SystemInfo.graphicsDeviceType} | cpu {SystemInfo.processorType} x{SystemInfo.processorCount} | ram {SystemInfo.systemMemorySize} MB | tela {Screen.width}x{Screen.height} {Screen.fullScreenMode} | vsync {QualitySettings.vSyncCount} alvo {Application.targetFrameRate} | qualidade {QualitySettings.GetQualityLevel()} sombras {QualitySettings.shadows} {QualitySettings.shadowResolution} dist {QualitySettings.shadowDistance} cascatas {QualitySettings.shadowCascades} luzes {QualitySettings.pixelLightCount} msaa {QualitySettings.antiAliasing} lod {QualitySettings.lodBias}"); return;
                 case "res": Screen.SetResolution(int.Parse(p[1]), int.Parse(p[2]), Screen.fullScreenMode); Resp("ok " + l); return; // res L A: muda a resolução (teste de gargalo da GPU)
                 case "fps": _fpsInicio = Time.unscaledTime; _fpsQuadros = 0; return;
@@ -491,13 +520,13 @@ namespace BetterGraphics
 
         // Renderers sob raízes que começam com RAIZ e usam material com TEXTO: nome, textura, metal.
         // Altura do chão sob um ponto (raio de cima para baixo que ignora o próprio ônibus); NaN sem chão.
-        static float GroundHeight(Vector3 p, Transform ignorar)
+        static float GroundHeight(Vector3 p, Transform ignorar, float maxY = float.PositiveInfinity)
         {
             var hits = Physics.RaycastAll(p + Vector3.up * 3f, Vector3.down, 40f);  // de pouco acima da base: tetos e coberturas ficam de fora
             float melhor = float.NaN, dist = float.MaxValue;
             foreach (var h in hits)
             {
-                if (h.collider == null || h.collider.transform.IsChildOf(ignorar)) continue;
+                if (h.collider == null || h.collider.transform.IsChildOf(ignorar) || h.point.y > maxY) continue;
                 if (h.distance < dist) { dist = h.distance; melhor = h.point.y; }
             }
             return melhor;
