@@ -38,6 +38,7 @@ namespace BetterGraphics
             Pos.CenaMudou();
             Reflexos.CenaMudou();
             ClearCoat.SceneChanged();
+            PhysicalSky.SceneChanged();
             Vidros.CenaMudou();
             Materiais.CenaMudou();
             Nativo.CenaMudou();
@@ -108,6 +109,7 @@ namespace BetterGraphics
             Seguro(Nativo.Restaurar, "Nativo");
             Seguro(Pos.Restaurar, "Pos");
             Seguro(Luz.Restaurar, "Luz");
+            Seguro(() => PhysicalSky.Restore(Luz.Sky), "Ceu");
             Seguro(Reflexos.Restaurar, "Reflexos");
             Seguro(ClearCoat.Restore, "Verniz");
             Seguro(Vidros.Restaurar, "Vidros");
@@ -298,6 +300,7 @@ namespace BetterGraphics
             RaiosSolForca = c.CreateEntry("RaiosSolForca", 0.5f, "Intensidade dos raios radiais");
             CreateRainEntries();
             CreateLightingEntries();
+            CreateSkyEntries();
         }
 
         internal static MelonPreferences_Entry<bool> RainGlassEnabled, WiperActive, RainFallEnabled, RainCollision, LightingCustomDeferred, LightingPhysicalFalloff, LightingCustomReflections, LightingPhysicalGlass, LightingClearCoat;
@@ -305,6 +308,8 @@ namespace BetterGraphics
             LightingGlassSideTransmission, LightingGlassFrontTransmission, LightingGlassInsideReflection, LightingGlassInsideTransmission,
             LightingClearCoatSmoothness, LightingClearCoatStrength, LightingPaintBaseSmoothness;
         internal static MelonPreferences_Entry<int> LightingShadowedStreetlights;
+        internal static MelonPreferences_Entry<bool> SkyPhysical;
+        internal static MelonPreferences_Entry<float> SkyAerosol, SkyMieG, SkyGroundAlbedo, SkySunIntensity, SkySunDiskMax, SkyCityGlow, SkyMoonAngle, SkyMoonGlow;
         internal static MelonPreferences_Entry<float[]> RainWindVelocity;
         internal static MelonPreferences_Entry<float> RainIntensity, RainGlobalWetness, RainAirHumidity, RainParticleDensity, RainTerminalVelocity, RainMotionBlurStretch;
         internal static MelonPreferences_Entry<int[]> RainGridResolution;
@@ -331,6 +336,20 @@ namespace BetterGraphics
             LightingPaintBaseSmoothness = l.CreateEntry("paint_base_smoothness", 0.5f, "Smoothness da tinta embaixo do verniz");
             LightingCustomReflections = l.CreateEntry("custom_reflections", true, "Reflexos deferred próprios: energia certa, oclusão especular e reflexo do céu só onde o ponto enxerga o céu");
             LightingShadowedStreetlights = l.CreateEntry("shadowed_streetlights", 2, "Quantos postes perto da câmera projetam sombra (cada um custa um mapa de sombra cúbico)");
+        }
+
+        static void CreateSkyEntries()
+        {
+            var k = MelonPreferences.CreateCategory("Sky", "BetterGraphics: céu e atmosfera");
+            SkyPhysical = k.CreateEntry("physical_sky", true, "Céu físico próprio (Rayleigh, aerossol e ozônio) no lugar do céu do Enviro; nuvens, estrelas e lua continuam dele");
+            SkyAerosol = k.CreateEntry("aerosol", 3f, "Aerossol (poeira, poluição, umidade) relativo ao ar limpo: 1 = montanha, 3 a 5 = cidade grande; mais = céu esbranquiçado e horizonte desbotado");
+            SkyMieG = k.CreateEntry("mie_g", 0.8f, "Concentração do brilho em volta do sol (0 a 0.95)");
+            SkyGroundAlbedo = k.CreateEntry("ground_albedo", 0.2f, "Albedo médio do chão visto de cima (cidade ~0.15 a 0.2)");
+            SkySunIntensity = k.CreateEntry("sun_intensity", 1.5f, "Intensidade do sol da cena que o céu acompanha (a mesma escala da luz direcional)");
+            SkySunDiskMax = k.CreateEntry("sun_disk_max", 400f, "Teto do brilho do disco do sol (o real estoura o bloom e pisca)");
+            SkyCityGlow = k.CreateEntry("city_glow", 0.02f, "Brilho da cidade no céu à noite (poluição luminosa)");
+            SkyMoonAngle = k.CreateEntry("moon_angle", 0.035f, "Meio ângulo do disco da lua no céu (rad; a real é 0.0045, o Enviro exagera para ela aparecer)");
+            SkyMoonGlow = k.CreateEntry("moon_glow", 0.002f, "Halo da lua (luz dela espalhada no ar)");
         }
 
         static void CreateRainEntries()

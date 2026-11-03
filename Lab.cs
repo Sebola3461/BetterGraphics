@@ -214,6 +214,37 @@ namespace BetterGraphics
                 case "deferred": Resp(DeferredLighting.Estado()); return;
                 case "vidros": Resp(Vidros.Estado()); return;
                 case "verniz": Resp(ClearCoat.State()); return;
+                case "ceufis": Resp(PhysicalSky.State()); return;
+                case "skymat": // propriedades do material do céu atual (shader, texturas, cores, números)
+                    {
+                        var sm = RenderSettings.skybox;
+                        if (sm == null || sm.shader == null) { Resp("skymat: nenhum"); return; }
+                        var sbs = new System.Text.StringBuilder($"skymat {sm.name} | {sm.shader.name} | kw {string.Join(",", sm.shaderKeywords)}\n");
+                        for (int i = 0; i < sm.shader.GetPropertyCount(); i++)
+                        {
+                            string pn = sm.shader.GetPropertyName(i);
+                            var pt = sm.shader.GetPropertyType(i);
+                            string pv = pt switch
+                            {
+                                UnityEngine.Rendering.ShaderPropertyType.Texture => sm.GetTexture(pn) is { } skyTex ? $"{skyTex.name} {skyTex.width}x{skyTex.height} {skyTex.GetIl2CppType().Name}" : "-",
+                                UnityEngine.Rendering.ShaderPropertyType.Color => sm.GetColor(pn).ToString(),
+                                UnityEngine.Rendering.ShaderPropertyType.Vector => sm.GetVector(pn).ToString(),
+                                _ => sm.GetFloat(pn).ToString("0.###")
+                            };
+                            sbs.AppendLine($"  {pn} ({pt}) = {pv}");
+                        }
+                        Resp(sbs.ToString()); return;
+                    }
+                case "sol": // direção do objeto Sun do Enviro (vale à noite) contra a da luz direcional
+                    {
+                        var cs = sky?.Components;
+                        if (cs == null || cs.Sun == null) { Resp("sol: sem Enviro"); return; }
+                        var dsun = (cs.Sun.transform.position - sky.transform.position).normalized;
+                        var dl = cs.DirectLight != null ? -cs.DirectLight.forward : Vector3.zero;
+                        var dm = cs.Moon != null ? (cs.Moon.transform.position - sky.transform.position).normalized : Vector3.zero;
+                        var lt = cs.DirectLight != null ? cs.DirectLight.GetComponent<Light>() : null;
+                        Resp($"sol: objeto {dsun} luz {dl} lua {dm} noite {sky.isNight} | intensidade {(lt != null ? lt.intensity : 0f):0.###} cor {(lt != null ? lt.color : Color.black)}"); return;
+                    }
                 case "vidrodebug": Shader.SetGlobalFloat("_BG_GlassDebug", F(p[1])); Resp("ok " + l); return; // 1 = vidro mostra só a sonda de reflexo
                 case "refldebug": Resp(DeferredLighting.ReflDebug(int.Parse(p[1]))); return;  // verde = oclusão especular nas sondas com caixa; vermelho = céu visível no reflexo do céu
                 case "luzes": Resp(Luzes(p.Length > 1 ? int.Parse(p[1]) : 15)); return;  // luzes N: as N luzes pontuais/spot mais perto da câmera

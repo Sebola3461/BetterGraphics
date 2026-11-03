@@ -81,6 +81,7 @@ namespace BetterGraphics
             Ambiente(sky);
             Sol();
             Atmosfera(sky);
+            PhysicalSky.AfterEnviro(sky);
         }
 
         static void Ambiente(Il2Cpp.EnviroSky sky)
